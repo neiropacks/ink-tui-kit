@@ -17,14 +17,17 @@
     "dev": "tsup --watch",
     "prepublishOnly": "npm run build"
   },
+  "dependencies": {
+    "@neiropacks/xterm-mouse": "^0.5.1"
+  },
   "devDependencies": {
     "@types/react": "^19.2.7",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "ink": "^6.5.1",
-    "react": "^19.2.7"
+    "ink": "^6.6.0",
+    "react": "^19.2.3"
   },
   "files": [
     "dist",

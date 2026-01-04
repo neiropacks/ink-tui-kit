@@ -1,105 +1,98 @@
-Default to using Bun instead of Node.js.
+# CLAUDE.md
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+This file provides guidance for the ink-mouse package.
 
-## APIs
+## Package Overview
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+`@neiropacks/ink-mouse` is a package for adding mouse support to Ink applications. It provides
+React components and hooks for handling mouse events in terminal environments.
+
+## Development
+
+### Installation
+
+```bash
+bun install
+```
+
+### Building
+
+```bash
+bun run build
+```
+
+### Development Mode
+
+```bash
+bun run dev
+```
 
 ## Testing
 
 Use `bun test` to run tests.
 
-```ts#index.test.ts
+```ts
 import { test, expect } from "bun:test";
 
-test("hello world", () => {
-  expect(1).toBe(1);
+test("description", () => {
+  expect(value).toBe(expected);
 });
 ```
 
-## Frontend
+## Ink Component Development
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+This package uses **Ink** (React for CLIs). Key concepts:
 
-Server:
+### Component Structure
 
-```ts#index.ts
-import index from "./index.html"
+```tsx
+import type { FC } from 'react';
+import { Box, Text } from 'ink';
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+const Example: FC<{ prop: string }> = ({ prop }) => {
+  return (
+    <Box>
+      <Text>{prop}</Text>
+    </Box>
+  );
+};
+
+export default Example;
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+### Mouse Handling
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
+This package specifically deals with mouse events in terminals:
 
-With the following `frontend.tsx`:
+- Mouse position tracking
+- Click detection
+- Scroll handling
+- Drag and drop support
+- Terminal-specific mouse protocols (xterm, SGR)
 
-```tsx#frontend.tsx
-import React from "react";
+### Terminal Considerations
 
-// import .css files directly and it works
-import './index.css';
+- Not all terminals support mouse events
+- Mouse support varies by terminal emulator
+- Always provide keyboard alternatives
+- Test across different terminals (iTerm, Terminal.app, Alacritty, etc.)
 
-import { createRoot } from "react-dom/client";
+## Dependencies
 
-const root = createRoot(document.body);
+- `ink` ^6.6.0 - React for CLIs (peer dependency)
+- `react` ^19.2.3 - React (peer dependency)
+- `@neiropacks/xterm-mouse` - Low-level xterm mouse protocol handling
 
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
+## Common Issues
 
-root.render(<Frontend />);
-```
+### Mouse Events Not Working
 
-Then, run index.ts
+- Check if terminal supports mouse events
+- Ensure mouse tracking is enabled in your terminal
+- Some terminals require explicit mouse mode activation
 
-```sh
-bun --hot ./index.ts
-```
+### Performance
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+- Mouse events can fire rapidly; consider debouncing
+- Use React.memo for components that re-render on mouse events
+- Optimize render cycles in components with mouse handlers

@@ -4,9 +4,13 @@ pre-commit:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc,css}"
       run: bun run format:biome --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
       stage_fixed: true
-    format:
+    format-yaml:
       glob: "*.{yml,yaml}"
       run: bun run format:dprint --staged {staged_files}
+      stage_fixed: true
+    format-markdown:
+      glob: "*.md"
+      run: bun run format:markdown --staged {staged_files}
       stage_fixed: true
     typecheck:
       run: bun run typecheck

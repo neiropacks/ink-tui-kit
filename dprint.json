@@ -15,12 +15,10 @@
     "trimTrailingZero": false,
     "ignoreCommentDirective": "pretty-yaml-ignore"
   },
-  "markdown": {},
   "excludes": [
     "**/node_modules"
   ],
   "plugins": [
-    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.5.1.wasm",
-    "https://plugins.dprint.dev/markdown-0.20.0.wasm"
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.5.1.wasm"
   ]
 }
