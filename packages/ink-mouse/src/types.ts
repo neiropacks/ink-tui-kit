@@ -120,15 +120,19 @@ export type HandlerRegistry = {
 };
 
 /**
+ * Mouse event type
+ */
+export type MouseEventType = 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel';
+
+/**
+ * Universal mouse event handler (all handlers have the same signature)
+ */
+export type MouseEventHandler = (event: InkMouseEvent) => void;
+
+/**
  * Registry context value for internal use by hooks
  */
 export type MouseRegistryContextValue = {
-  registerClickHandler: (id: string, ref: ElementRef, handler: ClickHandler) => void;
-  unregisterClickHandler: (id: string) => void;
-  registerMouseEnterHandler: (id: string, ref: ElementRef, handler: MouseEnterHandler) => void;
-  unregisterMouseEnterHandler: (id: string) => void;
-  registerMouseLeaveHandler: (id: string, ref: ElementRef, handler: MouseLeaveHandler) => void;
-  unregisterMouseLeaveHandler: (id: string) => void;
-  registerWheelHandler: (id: string, ref: ElementRef, handler: WheelHandler) => void;
-  unregisterWheelHandler: (id: string) => void;
+  registerHandler: (id: string, ref: ElementRef, eventType: MouseEventType, handler: MouseEventHandler) => void;
+  unregisterHandler: (id: string) => void;
 };

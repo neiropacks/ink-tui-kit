@@ -1,4 +1,4 @@
-import type { ElementRef, InkMouseEvent } from '../types';
+import type { ElementRef, MouseEnterHandler } from '../types';
 import { useMouseEventInternal } from './useMouseEventInternal';
 
 /**
@@ -26,12 +26,6 @@ import { useMouseEventInternal } from './useMouseEventInternal';
  * }
  * ```
  */
-export function useOnMouseEnter(ref: ElementRef, handler: ((event: InkMouseEvent) => void) | null | undefined): void {
-  useMouseEventInternal(
-    'mouseEnter',
-    ref,
-    handler,
-    (r, id, ref, h) => r.registerMouseEnterHandler(id, ref, h),
-    (r, id) => r.unregisterMouseEnterHandler(id),
-  );
+export function useOnMouseEnter(ref: ElementRef, handler: MouseEnterHandler | null | undefined): void {
+  useMouseEventInternal('mouseEnter', ref, handler);
 }

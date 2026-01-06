@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef } from 'react';
 import { DEV_WARNING, ERRORS } from '../constants';
 import { MouseRegistryContext } from '../context';
-import type { ElementRef } from '../types';
+import type { ElementRef, InkMouseEvent } from '../types';
 
 /**
  * Internal universal hook for mouse event registration
@@ -9,17 +9,10 @@ import type { ElementRef } from '../types';
  *
  * @internal
  */
-export function useMouseEventInternal<THandler>(
+export function useMouseEventInternal(
   eventType: 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel',
   ref: ElementRef,
-  handler: THandler | null | undefined,
-  register: (
-    registry: import('../types').MouseRegistryContextValue,
-    id: string,
-    ref: ElementRef,
-    handler: THandler,
-  ) => void,
-  unregister: (registry: import('../types').MouseRegistryContextValue, id: string) => void,
+  handler: ((event: InkMouseEvent) => void) | null | undefined,
 ): void {
   const registry = useContext(MouseRegistryContext);
   const idRef = useRef<string | null>(null);
@@ -50,10 +43,10 @@ export function useMouseEventInternal<THandler>(
       return;
     }
 
-    register(registry, id, ref, handler);
+    registry.registerHandler(id, ref, eventType, handler);
 
     return () => {
-      unregister(registry, id);
+      registry.unregisterHandler(id);
     };
-  }, [ref, handler, registry, register, unregister]);
+  }, [ref, handler, registry, eventType]);
 }

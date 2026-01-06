@@ -24,11 +24,5 @@ import { useMouseEventInternal } from './useMouseEventInternal';
  * ```
  */
 export function useOnClick(ref: ElementRef, handler: ClickHandler | null | undefined): void {
-  useMouseEventInternal(
-    'click',
-    ref,
-    handler,
-    (r, id, ref, h) => r.registerClickHandler(id, ref, h),
-    (r, id) => r.unregisterClickHandler(id),
-  );
+  useMouseEventInternal('click', ref, handler);
 }

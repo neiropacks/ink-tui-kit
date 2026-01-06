@@ -30,76 +30,31 @@ export const MouseProvider: FC<MouseProviderProps> = ({
   // Track hover state per element (ref) to determine enter/leave events
   const hoverStateRef = useRef<WeakMap<React.RefObject<unknown>, boolean>>(new WeakMap());
 
-  // Register click handler
-  const registerClickHandler = useCallback<
-    (id: string, ref: React.RefObject<unknown>, handler: (event: XtermMouseEvent) => void) => void
-  >((id, ref, handler) => {
-    handlersRef.current.set(id, { type: 'click', ref, handler });
-  }, []);
+  // Unified handler registration
+  const registerHandler = useCallback(
+    (
+      id: string,
+      ref: React.RefObject<unknown>,
+      eventType: 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel',
+      handler: (event: XtermMouseEvent) => void,
+    ) => {
+      handlersRef.current.set(id, { type: eventType, ref, handler });
+    },
+    [],
+  );
 
-  // Unregister click handler
-  const unregisterClickHandler = useCallback((id: string) => {
-    handlersRef.current.delete(id);
-  }, []);
-
-  // Register mouse enter handler
-  const registerMouseEnterHandler = useCallback<
-    (id: string, ref: React.RefObject<unknown>, handler: (event: XtermMouseEvent) => void) => void
-  >((id, ref, handler) => {
-    handlersRef.current.set(id, { type: 'mouseEnter', ref, handler });
-  }, []);
-
-  // Unregister mouse enter handler
-  const unregisterMouseEnterHandler = useCallback((id: string) => {
-    handlersRef.current.delete(id);
-  }, []);
-
-  // Register mouse leave handler
-  const registerMouseLeaveHandler = useCallback<
-    (id: string, ref: React.RefObject<unknown>, handler: (event: XtermMouseEvent) => void) => void
-  >((id, ref, handler) => {
-    handlersRef.current.set(id, { type: 'mouseLeave', ref, handler });
-  }, []);
-
-  // Unregister mouse leave handler
-  const unregisterMouseLeaveHandler = useCallback((id: string) => {
-    handlersRef.current.delete(id);
-  }, []);
-
-  // Register wheel handler
-  const registerWheelHandler = useCallback<
-    (id: string, ref: React.RefObject<unknown>, handler: (event: XtermMouseEvent) => void) => void
-  >((id, ref, handler) => {
-    handlersRef.current.set(id, { type: 'wheel', ref, handler });
-  }, []);
-
-  // Unregister wheel handler
-  const unregisterWheelHandler = useCallback((id: string) => {
+  // Unified handler unregistration
+  const unregisterHandler = useCallback((id: string) => {
     handlersRef.current.delete(id);
   }, []);
 
   // Registry context value
   const registryValue = useMemo<MouseRegistryContextValue>(
     () => ({
-      registerClickHandler,
-      unregisterClickHandler,
-      registerMouseEnterHandler,
-      unregisterMouseEnterHandler,
-      registerMouseLeaveHandler,
-      unregisterMouseLeaveHandler,
-      registerWheelHandler,
-      unregisterWheelHandler,
+      registerHandler,
+      unregisterHandler,
     }),
-    [
-      registerClickHandler,
-      unregisterClickHandler,
-      registerMouseEnterHandler,
-      unregisterMouseEnterHandler,
-      registerMouseLeaveHandler,
-      unregisterMouseLeaveHandler,
-      registerWheelHandler,
-      unregisterWheelHandler,
-    ],
+    [registerHandler, unregisterHandler],
   );
 
   // Initialize mouse instance and setup event listeners

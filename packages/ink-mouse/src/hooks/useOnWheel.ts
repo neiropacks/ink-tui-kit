@@ -37,11 +37,5 @@ import { useMouseEventInternal } from './useMouseEventInternal';
  * ```
  */
 export function useOnWheel(ref: ElementRef, handler: WheelHandler | null | undefined): void {
-  useMouseEventInternal(
-    'wheel',
-    ref,
-    handler,
-    (r, id, ref, h) => r.registerWheelHandler(id, ref, h),
-    (r, id) => r.unregisterWheelHandler(id),
-  );
+  useMouseEventInternal('wheel', ref, handler);
 }
