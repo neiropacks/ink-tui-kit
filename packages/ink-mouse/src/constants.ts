@@ -15,6 +15,7 @@ export const MOUSE_EVENTS = {
  */
 export const DEFAULT_PROVIDER_OPTIONS = {
   autoEnable: true,
+  cacheInvalidationMs: 16, // ~60fps
 } as const;
 
 /**

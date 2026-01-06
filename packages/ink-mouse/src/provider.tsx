@@ -11,6 +11,7 @@ import { isPointInRect } from './utils/geometry';
 
 type MouseProviderProps = PropsWithChildren<{
   readonly autoEnable?: boolean;
+  readonly cacheInvalidationMs?: number;
 }>;
 
 type CachedElementState = {
@@ -19,11 +20,10 @@ type CachedElementState = {
   boundsTimestamp?: number;
 };
 
-const CACHE_INVALIDATION_MS = 16; // ~60fps
-
 export const MouseProvider: FC<MouseProviderProps> = ({
   children,
   autoEnable = DEFAULT_PROVIDER_OPTIONS.autoEnable,
+  cacheInvalidationMs = DEFAULT_PROVIDER_OPTIONS.cacheInvalidationMs,
 }: MouseProviderProps) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
@@ -107,7 +107,7 @@ export const MouseProvider: FC<MouseProviderProps> = ({
       const now = Date.now();
 
       // Check if cache is valid
-      if (existing?.bounds && existing.boundsTimestamp && now - existing.boundsTimestamp < CACHE_INVALIDATION_MS) {
+      if (existing?.bounds && existing.boundsTimestamp && now - existing.boundsTimestamp < cacheInvalidationMs) {
         return existing;
       }
 
@@ -211,7 +211,7 @@ export const MouseProvider: FC<MouseProviderProps> = ({
       setIsEnabled(false);
       setIsTracking(false);
     };
-  }, [autoEnable]);
+  }, [autoEnable, cacheInvalidationMs]);
 
   // Enable method
   const enable = useCallback((): void => {
