@@ -1,5 +1,9 @@
 export { useMouse } from './useMouse';
 export { useOnClick } from './useOnClick';
+export { useOnDrag } from './useOnDrag';
 export { useOnMouseEnter } from './useOnMouseEnter';
 export { useOnMouseLeave } from './useOnMouseLeave';
+export { useOnMouseMove } from './useOnMouseMove';
+export { useOnPress } from './useOnPress';
+export { useOnRelease } from './useOnRelease';
 export { useOnWheel } from './useOnWheel';

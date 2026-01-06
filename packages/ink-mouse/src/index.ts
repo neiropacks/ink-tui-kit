@@ -12,7 +12,17 @@ export {
   useElementPosition,
 } from './geometry';
 // Hooks
-export { useMouse, useOnClick, useOnMouseEnter, useOnMouseLeave, useOnWheel } from './hooks';
+export {
+  useMouse,
+  useOnClick,
+  useOnDrag,
+  useOnMouseEnter,
+  useOnMouseLeave,
+  useOnMouseMove,
+  useOnPress,
+  useOnRelease,
+  useOnWheel,
+} from './hooks';
 // Provider
 export { MouseProvider } from './provider';
 export type {
@@ -22,8 +32,12 @@ export type {
   ElementRef,
   InkMouseEvent,
   MouseContextValue,
+  MouseDragHandler,
   MouseEnterHandler,
   MouseLeaveHandler,
+  MouseMoveHandler,
+  MousePressHandler,
+  MouseReleaseHandler,
   WheelHandler,
 } from './types';
 

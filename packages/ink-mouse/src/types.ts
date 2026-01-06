@@ -54,6 +54,26 @@ export type MouseEnterHandler = (event: InkMouseEvent) => void;
 export type MouseLeaveHandler = (event: InkMouseEvent) => void;
 
 /**
+ * Mouse press event handler
+ */
+export type MousePressHandler = (event: InkMouseEvent) => void;
+
+/**
+ * Mouse release event handler
+ */
+export type MouseReleaseHandler = (event: InkMouseEvent) => void;
+
+/**
+ * Mouse move event handler
+ */
+export type MouseMoveHandler = (event: InkMouseEvent) => void;
+
+/**
+ * Mouse drag event handler
+ */
+export type MouseDragHandler = (event: InkMouseEvent) => void;
+
+/**
  * Wheel event handler
  */
 export type WheelHandler = (event: InkMouseEvent) => void;
@@ -110,19 +130,67 @@ export type WheelHandlerEntry = {
 };
 
 /**
+ * Handler entry for mouse press events in registry
+ */
+export type MousePressHandlerEntry = {
+  id: string;
+  ref: ElementRef;
+  handler: MousePressHandler;
+};
+
+/**
+ * Handler entry for mouse release events in registry
+ */
+export type MouseReleaseHandlerEntry = {
+  id: string;
+  ref: ElementRef;
+  handler: MouseReleaseHandler;
+};
+
+/**
+ * Handler entry for mouse move events in registry
+ */
+export type MouseMoveHandlerEntry = {
+  id: string;
+  ref: ElementRef;
+  handler: MouseMoveHandler;
+};
+
+/**
+ * Handler entry for mouse drag events in registry
+ */
+export type MouseDragHandlerEntry = {
+  id: string;
+  ref: ElementRef;
+  handler: MouseDragHandler;
+};
+
+/**
  * Handler registry for all event types
  */
 export type HandlerRegistry = {
   click: Map<string, ClickHandlerEntry>;
   mouseEnter: Map<string, MouseEnterHandlerEntry>;
   mouseLeave: Map<string, MouseLeaveHandlerEntry>;
+  mousePress: Map<string, MousePressHandlerEntry>;
+  mouseRelease: Map<string, MouseReleaseHandlerEntry>;
+  mouseMove: Map<string, MouseMoveHandlerEntry>;
+  mouseDrag: Map<string, MouseDragHandlerEntry>;
   wheel: Map<string, WheelHandlerEntry>;
 };
 
 /**
  * Mouse event type
  */
-export type MouseEventType = 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel';
+export type MouseEventType =
+  | 'click'
+  | 'mouseEnter'
+  | 'mouseLeave'
+  | 'mousePress'
+  | 'mouseRelease'
+  | 'mouseMove'
+  | 'mouseDrag'
+  | 'wheel';
 
 /**
  * Universal mouse event handler (all handlers have the same signature)

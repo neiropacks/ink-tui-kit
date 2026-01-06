@@ -24,7 +24,19 @@ export const MouseProvider: FC<MouseProviderProps> = ({
   const handlersRef = useRef<
     Map<
       string,
-      { type: 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel'; ref: React.RefObject<unknown>; handler: unknown }
+      {
+        type:
+          | 'click'
+          | 'mouseEnter'
+          | 'mouseLeave'
+          | 'mousePress'
+          | 'mouseRelease'
+          | 'mouseMove'
+          | 'mouseDrag'
+          | 'wheel';
+        ref: React.RefObject<unknown>;
+        handler: unknown;
+      }
     >
   >(new Map());
   // Track hover state per element (ref) to determine enter/leave events
@@ -35,7 +47,15 @@ export const MouseProvider: FC<MouseProviderProps> = ({
     (
       id: string,
       ref: React.RefObject<unknown>,
-      eventType: 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel',
+      eventType:
+        | 'click'
+        | 'mouseEnter'
+        | 'mouseLeave'
+        | 'mousePress'
+        | 'mouseRelease'
+        | 'mouseMove'
+        | 'mouseDrag'
+        | 'wheel',
       handler: (event: XtermMouseEvent) => void,
     ) => {
       handlersRef.current.set(id, { type: eventType, ref, handler });
@@ -90,10 +110,23 @@ export const MouseProvider: FC<MouseProviderProps> = ({
       });
     };
 
-    // Move event handler (for hover)
+    // Move event handler (for hover and mouse move)
     const handleMove = (event: XtermMouseEvent): void => {
       const { x, y } = event;
 
+      // First, handle mouseMove handlers
+      handlersRef.current.forEach((entry) => {
+        if (entry.type !== 'mouseMove') return;
+
+        const bounds = getBoundingClientRect(entry.ref.current as DOMElement | null);
+        if (!bounds) return;
+
+        if (isPointInRect(x, y, bounds)) {
+          (entry.handler as (event: XtermMouseEvent) => void)(event);
+        }
+      });
+
+      // Then, handle hover (mouseEnter/mouseLeave) events
       // Group handlers by ref
       const refsToHandlers = new Map<
         React.RefObject<unknown>,
@@ -159,10 +192,61 @@ export const MouseProvider: FC<MouseProviderProps> = ({
       });
     };
 
+    // Press event handler
+    const handlePress = (event: XtermMouseEvent): void => {
+      const { x, y } = event;
+
+      handlersRef.current.forEach((entry) => {
+        if (entry.type !== 'mousePress') return;
+
+        const bounds = getBoundingClientRect(entry.ref.current as DOMElement | null);
+        if (!bounds) return;
+
+        if (isPointInRect(x, y, bounds)) {
+          (entry.handler as (event: XtermMouseEvent) => void)(event);
+        }
+      });
+    };
+
+    // Release event handler
+    const handleRelease = (event: XtermMouseEvent): void => {
+      const { x, y } = event;
+
+      handlersRef.current.forEach((entry) => {
+        if (entry.type !== 'mouseRelease') return;
+
+        const bounds = getBoundingClientRect(entry.ref.current as DOMElement | null);
+        if (!bounds) return;
+
+        if (isPointInRect(x, y, bounds)) {
+          (entry.handler as (event: XtermMouseEvent) => void)(event);
+        }
+      });
+    };
+
+    // Drag event handler
+    const handleDrag = (event: XtermMouseEvent): void => {
+      const { x, y } = event;
+
+      handlersRef.current.forEach((entry) => {
+        if (entry.type !== 'mouseDrag') return;
+
+        const bounds = getBoundingClientRect(entry.ref.current as DOMElement | null);
+        if (!bounds) return;
+
+        if (isPointInRect(x, y, bounds)) {
+          (entry.handler as (event: XtermMouseEvent) => void)(event);
+        }
+      });
+    };
+
     // Register event listeners
     mouse.on(MOUSE_EVENTS.CLICK, handleClick);
     mouse.on(MOUSE_EVENTS.MOVE, handleMove);
     mouse.on(MOUSE_EVENTS.WHEEL, handleWheel);
+    mouse.on(MOUSE_EVENTS.PRESS, handlePress);
+    mouse.on(MOUSE_EVENTS.RELEASE, handleRelease);
+    mouse.on(MOUSE_EVENTS.DRAG, handleDrag);
 
     // Set tracking state
     setIsTracking(true);

@@ -7,7 +7,10 @@ interfaces.
 ## Features
 
 - **Click detection** - Detect mouse clicks on elements
+- **Press/Release tracking** - Track individual button press and release events
 - **Hover tracking** - Track when mouse enters/exits elements
+- **Mouse move tracking** - Track mouse movement over elements
+- **Drag support** - Track mouse drag operations
 - **Wheel/scroll support** - Handle mouse wheel events
 - **Automatic hit testing** - Uses element bounds for accurate event detection
 - **Dynamic layout support** - Recalculates element positions on each event
@@ -223,6 +226,137 @@ function Scrollable() {
 }
 ```
 
+### `useOnPress(ref, handler)`
+
+Hook for handling mouse button press events on an element.
+
+Press events fire immediately when a mouse button is pressed down, before the
+click event (which requires press + release).
+
+**Parameters:**
+
+- `ref: RefObject<DOMElement>` - Reference to the element
+- `handler: (event: InkMouseEvent) => void` - Press event handler
+
+**Example:**
+
+```tsx
+function Button() {
+ const ref = useRef<DOMElement>(null);
+ const [isPressed, setIsPressed] = useState(false);
+
+ useOnPress(ref, () => setIsPressed(true));
+ useOnRelease(ref, () => setIsPressed(false));
+
+ return (
+  <Box ref={ref}>
+   <Text>{isPressed ? 'Pressed!' : 'Press me'}</Text>
+  </Box>
+ );
+}
+```
+
+### `useOnRelease(ref, handler)`
+
+Hook for handling mouse button release events on an element.
+
+Release events fire when a mouse button is released.
+
+**Parameters:**
+
+- `ref: RefObject<DOMElement>` - Reference to the element
+- `handler: (event: InkMouseEvent) => void` - Release event handler
+
+**Example:**
+
+```tsx
+function Button() {
+ const ref = useRef<DOMElement>(null);
+ const [isPressed, setIsPressed] = useState(false);
+
+ useOnPress(ref, () => setIsPressed(true));
+ useOnRelease(ref, () => setIsPressed(false));
+
+ return (
+  <Box ref={ref}>
+   <Text>{isPressed ? 'Pressed!' : 'Press me'}</Text>
+  </Box>
+ );
+}
+```
+
+### `useOnMouseMove(ref, handler)`
+
+Hook for handling mouse move events on an element.
+
+Move events fire when the mouse cursor moves within the element's bounds.
+Unlike hover events, move events fire continuously as the mouse moves.
+
+**Performance Note:** Move events fire very frequently. Consider debouncing or
+throttling handlers for performance-sensitive applications.
+
+**Parameters:**
+
+- `ref: RefObject<DOMElement>` - Reference to the element
+- `handler: (event: InkMouseEvent) => void` - Mouse move event handler
+
+**Example:**
+
+```tsx
+function Tracker() {
+ const ref = useRef<DOMElement>(null);
+ const [position, setPosition] = useState({ x: 0, y: 0 });
+
+ useOnMouseMove(ref, (event) => {
+  setPosition({ x: event.x, y: event.y });
+ });
+
+ return (
+  <Box ref={ref}>
+   <Text>Mouse position: {position.x}, {position.y}</Text>
+  </Box>
+ );
+}
+```
+
+### `useOnDrag(ref, handler)`
+
+Hook for handling mouse drag events on an element.
+
+Drag events fire when the mouse moves while a button is held down. This is
+useful for implementing drag-and-drop functionality.
+
+**Parameters:**
+
+- `ref: RefObject<DOMElement>` - Reference to the element
+- `handler: (event: InkMouseEvent) => void` - Drag event handler
+
+**Example:**
+
+```tsx
+function Draggable() {
+ const ref = useRef<DOMElement>(null);
+ const [isDragging, setIsDragging] = useState(false);
+ const [position, setPosition] = useState({ x: 0, y: 0 });
+
+ useOnPress(ref, () => setIsDragging(true));
+ useOnRelease(ref, () => setIsDragging(false));
+
+ useOnDrag(ref, (event) => {
+  if (isDragging) {
+   setPosition({ x: event.x, y: event.y });
+  }
+ });
+
+ return (
+  <Box ref={ref} flexDirection="column">
+   <Text>Position: {position.x}, {position.y}</Text>
+   <Text>{isDragging ? '(dragging)' : '(not dragging)'}</Text>
+  </Box>
+ );
+}
+```
+
 ## Geometry Utilities
 
 The package also provides utilities for working with element positions:
@@ -342,8 +476,37 @@ function MultiHandler() {
  useOnClick(ref, () => console.log('Clicked!'));
  useOnMouseEnter(ref, () => console.log('Entered!'));
  useOnMouseLeave(ref, () => console.log('Exited!'));
+ useOnPress(ref, () => console.log('Pressed!'));
+ useOnRelease(ref, () => console.log('Released!'));
+ useOnMouseMove(ref, (e) => console.log(`Moved to ${e.x}, ${e.y}`));
 
  return <Box ref={ref}>Multi-handler element</Box>;
+}
+```
+
+For a complete draggable component with press/release/drag tracking:
+
+```tsx
+function DraggableButton() {
+ const ref = React.useRef(null);
+ const [isDragging, setIsDragging] = React.useState(false);
+ const [position, setPosition] = React.useState({ x: 0, y: 0 });
+
+ useOnPress(ref, () => setIsDragging(true));
+ useOnRelease(ref, () => setIsDragging(false));
+ useOnDrag(ref, (event) => {
+  if (isDragging) {
+   setPosition({ x: event.x, y: event.y });
+  }
+ });
+
+ return (
+  <Box ref={ref}>
+   <Text>
+    Position: {position.x}, {position.y} {isDragging ? '(dragging)' : ''}
+   </Text>
+  </Box>
+ );
 }
 ```
 

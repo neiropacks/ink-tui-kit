@@ -10,7 +10,15 @@ import type { ElementRef, InkMouseEvent } from '../types';
  * @internal
  */
 export function useMouseEventInternal(
-  eventType: 'click' | 'mouseEnter' | 'mouseLeave' | 'wheel',
+  eventType:
+    | 'click'
+    | 'mouseEnter'
+    | 'mouseLeave'
+    | 'mousePress'
+    | 'mouseRelease'
+    | 'mouseMove'
+    | 'mouseDrag'
+    | 'wheel',
   ref: ElementRef,
   handler: ((event: InkMouseEvent) => void) | null | undefined,
 ): void {
