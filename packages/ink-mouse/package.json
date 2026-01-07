@@ -40,6 +40,7 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "TEST-GUIDE.md"
   ]
 }

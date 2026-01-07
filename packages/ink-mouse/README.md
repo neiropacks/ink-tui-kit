@@ -602,6 +602,126 @@ function DraggableButton() {
 }
 ```
 
+## Testing
+
+This package has comprehensive test coverage to ensure reliability and prevent regressions.
+
+### Running Tests
+
+```bash
+# Run all tests in the monorepo
+bun test
+
+# Run tests with coverage report
+bun run test:coverage
+
+# Generate LCOV coverage reports for CI/CD
+bun run test:coverage:lcov
+
+# Run tests from the ink-mouse package directory
+cd packages/ink-mouse
+bun test
+```
+
+### Test Coverage
+
+- **95.26%** line coverage
+- **97.44%** function coverage
+- **148 tests** across 8 test files
+
+The test suite covers:
+
+- Geometry utilities (point/rectangle calculations)
+- Element position and dimension extraction
+- React hooks lifecycle and behavior
+- Mouse event handler registration and cleanup
+- Integration scenarios for complete workflows
+
+### Writing Tests
+
+The package provides testing utilities for mocking Ink's internal structures:
+
+#### Mock Helpers
+
+```typescript
+import {
+  createMockYogaNode,
+  createMockDOMElement,
+  createMockDOMElementChain,
+} from '@neiropacks/ink-mouse/test/mocks/ink-element';
+
+// Create a mock Yoga node with computed layout
+const yogaNode = createMockYogaNode({
+  left: 10,
+  top: 20,
+  width: 100,
+  height: 50,
+});
+
+// Create a mock DOMElement
+const element = createMockDOMElement({
+  left: 10,
+  top: 20,
+  width: 100,
+  height: 50,
+  parentNode: null,
+});
+
+// Create element with parent chain for position accumulation
+const childElement = createMockDOMElementChain([
+  { left: 5, top: 10, width: 50, height: 30 },   // child
+  { left: 15, top: 20, width: 100, height: 50 },  // parent
+  { left: 25, top: 30, width: 150, height: 70 },  // grandparent
+]);
+```
+
+#### Example Test
+
+```typescript
+import { render } from 'ink-testing-library';
+import { describe, expect, test } from 'bun:test';
+import React from 'react';
+import { Box, Text } from 'ink';
+import { MouseProvider, useOnClick } from '@neiropacks/ink-mouse';
+
+describe('useOnClick', () => {
+  test('registers click handler', () => {
+    function TestComponent() {
+      const ref = React.useRef(null);
+      useOnClick(ref, () => {});
+
+      return (
+        <Box>
+          <Text>Clickable</Text>
+        </Box>
+      );
+    }
+
+    const { lastFrame } = render(
+      <MouseProvider>
+        <TestComponent />
+      </MouseProvider>
+    );
+
+    expect(lastFrame()).toBe('Clickable');
+  });
+});
+```
+
+### Testing Guidelines
+
+1. **Use `.tsx` extension for test files with JSX** - Test files that use JSX must use the `.tsx` extension
+2. **Wrap all text in `<Text>` components** - Ink requires all text to be wrapped in `<Text>` components
+3. **Create template literals in variables** - Don't use template literals directly in JSX expressions
+4. **Test realistic scenarios** - Focus on component composition and lifecycle rather than implementation details
+5. **Account for terminal 1-indexing** - Terminal coordinates start at (1, 1), not (0, 0)
+
+For detailed testing documentation and best practices, see:
+
+- [Testing Guide](./TEST-GUIDE.md) - Comprehensive testing documentation
+- [Integration Tests for Ink Mouse Event Workflows](../../docs/solutions/testing/integration-tests-ink-mouse-event-workflows.md)
+- [Testing Ink Components with React Hooks](../../docs/solutions/testing-ink-components-with-hooks.md)
+
 ## License
 
 MIT
