@@ -170,6 +170,64 @@ test("description", () => {
 });
 ```
 
+### Important Testing Notes
+
+- **Test files with JSX must use `.tsx` extension** - Rename from `.test.ts` to `.test.tsx` if using JSX
+- **Ink requires `<Text>` component** - All text strings in Ink components must be wrapped in `<Text>` from 'ink'
+- **Template literals in JSX** - Use variables for template literals, then interpolate in JSX:
+
+  ```tsx
+  const text = `Value: ${value}`;
+  return <Box><Text>{text}</Text></Box>;
+  ```
+
+## Documentation
+
+When creating or modifying documentation, follow these path conventions:
+
+### Path Best Practices
+
+**ALWAYS use relative paths instead of absolute paths:**
+
+- ✅ **Use repository-relative paths** for project files:
+
+  ```markdown
+  See `packages/ink-mouse/src/geometry.test.ts` for examples
+  ```
+
+- ✅ **Use file-relative paths** for documentation links:
+
+  ```markdown
+  - [Related Topic](./related-topic.md)
+  - [Parent Section](../README.md)
+  ```
+
+- ❌ **NEVER use absolute paths** - they break when cloned by other developers:
+
+  ```markdown
+  # WRONG - Don't do this!
+  - /Users/username/projects/repo/packages/...
+  ```
+
+### Why Relative Paths Matter
+
+Absolute paths contain machine-specific information (username, directory structure) that:
+
+- Break when repository is cloned by other developers
+- Differ between CI/CD environments
+- Cause broken links and confusion
+- Make documentation non-portable
+
+### Verification
+
+Before committing documentation changes, verify no absolute paths exist:
+
+```bash
+# Check for absolute paths in documentation
+grep -r "/Users/" docs/
+grep -r "/home/" docs/
+```
+
 ## Working with Ink
 
 All packages in this monorepo are designed to work with **Ink** - React for CLIs.
