@@ -1,6 +1,7 @@
 {
   "name": "ink-tui-kit",
   "type": "module",
+  "license": "MIT",
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@biomejs/biome": "^2.3.11",
