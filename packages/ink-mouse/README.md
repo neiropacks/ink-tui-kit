@@ -371,7 +371,7 @@ function Draggable() {
 
 ## Geometry Utilities
 
-The package also provides utilities for working with element positions:
+The package also provides utilities for working with element positions and rectangles:
 
 ### `getBoundingClientRect(node)`
 
@@ -406,6 +406,79 @@ React hook for tracking element bounds.
 - `deps?: unknown[]` - Dependencies to trigger recalculation (default: `[]`)
 
 **Returns:** `BoundingClientRect`
+
+### `getRectCenter(rect)`
+
+Get the center point of a rectangle. Useful for centering elements, calculating anchor points, or positioning tooltips.
+
+**Parameters:**
+
+- `rect: BoundingClientRect` - The bounding rectangle
+
+**Returns:** `{ x: number; y: number }` - The center point
+
+**Example:**
+
+```tsx
+import { getBoundingClientRect, getRectCenter } from '@neiropacks/ink-mouse';
+
+function Tooltip() {
+ const buttonRect = getBoundingClientRect(buttonRef.current);
+ if (buttonRect) {
+   const center = getRectCenter(buttonRect);
+   console.log(`Button center: ${center.x}, ${center.y}`);
+ }
+ return <Box>Tooltip</Box>;
+}
+```
+
+### `isRectOverlapping(rect1, rect2)`
+
+Check if two rectangles overlap. Useful for collision detection and drag-and-drop.
+
+**Parameters:**
+
+- `rect1: BoundingClientRect` - The first rectangle
+- `rect2: BoundingClientRect` - The second rectangle
+
+**Returns:** `boolean` - True if rectangles overlap
+
+**Example:**
+
+```tsx
+import { useBoundingClientRect, isRectOverlapping } from '@neiropacks/ink-mouse';
+
+function DragDropZone() {
+ const dragRect = useBoundingClientRect(dragRef);
+ const dropRect = useBoundingClientRect(dropRef);
+
+ const canDrop = dragRect && dropRect && isRectOverlapping(dragRect, dropRect);
+
+ return <Box>{canDrop ? 'Drop here!' : 'Drag over target'}</Box>;
+}
+```
+
+### `isPointInRect(x, y, rect)`
+
+Check if a point is inside a rectangle. Useful for hit testing.
+
+**Parameters:**
+
+- `x: number` - The x coordinate of the point
+- `y: number` - The y coordinate of the point
+- `rect: BoundingClientRect` - The bounding rectangle
+
+**Returns:** `boolean` - True if point is inside rectangle
+
+**Example:**
+
+```tsx
+import { isPointInRect } from '@neiropacks/ink-mouse';
+
+const rect = { left: 10, top: 10, right: 20, bottom: 20, width: 10, height: 10, x: 10, y: 10 };
+isPointInRect(15, 15, rect); // true
+isPointInRect(5, 5, rect);   // false
+```
 
 ## Event Object
 

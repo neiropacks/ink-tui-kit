@@ -15,6 +15,7 @@
   "ignores": [
     "node_modules/**",
     ".changeset/**",
-    "packages/*/node_modules/**"
+    "packages/*/node_modules/**",
+    "plans/**"
   ]
 }

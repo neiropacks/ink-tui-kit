@@ -20,40 +20,10 @@ export function isPointInRect(x: number, y: number, rect: BoundingClientRect): b
 }
 
 /**
- * Create a bounding client rect from coordinates and dimensions.
- *
- * @param x - The x coordinate.
- * @param y - The y coordinate.
- * @param width - The width.
- * @param height - The height.
- * @returns The bounding client rect.
- *
- * @example
- * ```ts
- * const rect = createBoundingClientRect(10, 10, 100, 50);
- * // { left: 10, top: 10, right: 110, bottom: 60, width: 100, height: 50, x: 10, y: 10 }
- * ```
- */
-export function createBoundingClientRect(x: number, y: number, width: number, height: number): BoundingClientRect {
-  const left = x;
-  const top = y;
-  const right = left + width;
-  const bottom = top + height;
-
-  return {
-    left,
-    top,
-    right,
-    bottom,
-    width,
-    height,
-    x: left,
-    y: top,
-  };
-}
-
-/**
  * Get the center point of a rectangle.
+ *
+ * Useful for centering elements, calculating anchor points for connectors,
+ * or positioning tooltips relative to elements.
  *
  * @param rect - The bounding rectangle.
  * @returns The center point {x, y}.
@@ -62,6 +32,18 @@ export function createBoundingClientRect(x: number, y: number, width: number, he
  * ```ts
  * const rect = { left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10, x: 0, y: 0 };
  * getRectCenter(rect); // { x: 5, y: 5 }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Position a tooltip at the center of a button
+ * import { getBoundingClientRect, getRectCenter } from '@neiropacks/ink-mouse';
+ *
+ * const buttonRect = getBoundingClientRect(buttonRef.current);
+ * if (buttonRect) {
+ *   const center = getRectCenter(buttonRect);
+ *   console.log(`Button center: ${center.x}, ${center.y}`);
+ * }
  * ```
  */
 export function getRectCenter(rect: BoundingClientRect): { x: number; y: number } {
@@ -74,6 +56,9 @@ export function getRectCenter(rect: BoundingClientRect): { x: number; y: number 
 /**
  * Check if two rectangles overlap.
  *
+ * Useful for collision detection, determining if elements intersect,
+ * or checking if a dragged element overlaps with drop targets.
+ *
  * @param rect1 - The first rectangle.
  * @param rect2 - The second rectangle.
  * @returns True if the rectangles overlap, false otherwise.
@@ -83,6 +68,21 @@ export function getRectCenter(rect: BoundingClientRect): { x: number; y: number 
  * const rect1 = { left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10, x: 0, y: 0 };
  * const rect2 = { left: 5, top: 5, right: 15, bottom: 15, width: 10, height: 10, x: 5, y: 5 };
  * isRectOverlapping(rect1, rect2); // true
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Check if a dragged element overlaps with drop zones
+ * import { useBoundingClientRect, isRectOverlapping } from '@neiropacks/ink-mouse';
+ *
+ * function DragItem() {
+ *   const dragRect = useBoundingClientRect(dragRef);
+ *   const dropZoneRect = useBoundingClientRect(dropZoneRef);
+ *
+ *   const canDrop = dragRect && dropZoneRect && isRectOverlapping(dragRect, dropZoneRect);
+ *
+ *   return <Box>{canDrop ? 'Drop here!' : 'Drag over target'}</Box>;
+ * }
  * ```
  */
 export function isRectOverlapping(rect1: BoundingClientRect, rect2: BoundingClientRect): boolean {
