@@ -24,6 +24,10 @@
     "format": "bun run format:biome && bun run format:dprint && bun run format:markdown",
     "check": "biome check",
     "lint:markdown": "markdownlint-cli2 \"**/*.md\"",
-    "build": "bun run --filter \"*\" build"
+    "build": "bun run --filter \"*\" build",
+    "test": "bun run --filter \"*\" test",
+    "test:coverage": "bun run --filter \"*\" test --coverage",
+    "test:coverage:lcov": "bun run --filter \"*\" test --coverage --coverage-reporter=lcov",
+    "test:coverage:reporters": "bun run --filter \"*\" test --coverage --coverage-reporter=text --coverage-reporter=lcov"
   }
 }

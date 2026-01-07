@@ -63,6 +63,99 @@ bun run check
 bun run lint:markdown
 ```
 
+### Testing
+
+```bash
+# Run all tests across all packages
+bun test
+
+# Run tests with coverage report (text output to console)
+bun run test:coverage
+
+# Generate LCOV coverage reports for CI/CD
+bun run test:coverage:lcov
+
+# Generate both text and LCOV reports
+bun run test:coverage:reporters
+```
+
+#### Coverage Configuration
+
+Coverage is configured in `bunfig.toml` at the repository root:
+
+- **Threshold**: 80% for lines and functions (configurable)
+- **Output**: Text reports by default, LCOV on demand
+- **Location**: `coverage/` directory in each package (gitignored)
+- **Excludes**: Test files, mocks, fixtures, build artifacts, type definitions
+
+#### Coverage Goals
+
+- **Target**: >80% overall coverage
+- **Critical paths**: >90% coverage for business logic
+- **Utilities**: 100% coverage (pure functions)
+- **UI components**: Lower coverage acceptable (integration tests)
+
+#### Viewing Coverage Reports
+
+**Text output** (default):
+
+```bash
+bun test:coverage
+# Shows coverage table in terminal
+```
+
+**LCOV reports** (for CI/CD):
+
+```bash
+bun test:coverage:lcov
+# Generates coverage/lcov.info in each package
+# Can be uploaded to Codecov, Coveralls, etc.
+```
+
+**HTML reports** (future enhancement):
+
+```bash
+# TODO: Add HTML reporter for visual coverage inspection
+# Requires: monocart-coverage-reports or similar tool
+```
+
+#### Package-Level Testing
+
+For package-specific testing, run commands from the package directory:
+
+```bash
+cd packages/ink-mouse
+
+# Run tests for this package only
+bun test
+
+# Run with coverage
+bun test --coverage
+
+# Run specific test file
+bun test src/utils/geometry.test.ts
+```
+
+#### Coverage in CI/CD
+
+Coverage reports integrate with CI/CD services:
+
+- **GitHub Actions**: Upload `lcov.info` to Codecov
+- **GitLab CI**: Built-in coverage parsing
+- **Pull requests**: Automatic coverage comments (with Codecov setup)
+
+Example GitHub Actions workflow:
+
+```yaml
+- name: Run tests with coverage
+  run: bun run test:coverage:lcov
+
+- name: Upload to Codecov
+  uses: codecov/codecov-action@v3
+  with:
+    files: ./packages/*/coverage/lcov.info
+```
+
 ### Publishing
 
 The project uses Changesets for versioning:
