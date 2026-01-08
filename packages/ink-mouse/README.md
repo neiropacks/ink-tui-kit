@@ -728,4 +728,4 @@ MIT
 
 ## Related Packages
 
-- [@neiropacks/xterm-mouse](https://github.com/neiromaster/xterm-mouse) - Low-level xterm mouse protocol handler
+- [@ink-tools/xterm-mouse](https://github.com/neiromaster/xterm-mouse) - Low-level xterm mouse protocol handler

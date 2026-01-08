@@ -23,7 +23,7 @@ This guide explains the package migration from `@neiropacks/ink-mouse` to `@ink-
 
 The package still depends on:
 
-- `@neiropacks/xterm-mouse` (note: this dependency will move to `@ink-tools/xterm-mouse` in a future release)
+- `@ink-tools/xterm-mouse` - Low-level xterm mouse protocol handling
 
 ## Why the Migration?
 
@@ -215,9 +215,13 @@ npm list ink react
 bun add ink@^6.6.0 react@^19.2.3
 ```
 
-### Issue: "Cannot find module '@neiropacks/xterm-mouse'"
+### Issue: "Cannot find module '@ink-tools/xterm-mouse'"
 
-**Solution**: The package still depends on `@neiropacks/xterm-mouse`. This is expected and will be updated in a future release. No action needed.
+**Solution**: Ensure you have the latest version of `@ink-tools/xterm-mouse` installed:
+
+```bash
+bun add @ink-tools/xterm-mouse@latest
+```
 
 ### Issue: Type errors after migration
 
@@ -247,13 +251,9 @@ The old package `@neiropacks/ink-mouse` is **deprecated** as of version 0.3.0:
 
 ## Future Plans
 
-### Upcoming Changes
+### Additional Packages
 
-1. **xterm-mouse migration**: `@neiropacks/xterm-mouse` → `@ink-tools/xterm-mouse`
-   - When this happens, a minor version bump (1.x → 2.0) will be released
-   - This will be a non-breaking change if you're using `@ink-tools/ink-mouse`
-
-2. **Additional packages**: More Ink-related tools will be added under `@ink-tools`:
+More Ink-related tools will be added under `@ink-tools`:
    - Testing utilities
    - Component libraries
    - Developer tools
