@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+### Patch Changes
+
+- 2781665: Test OIDC publishing with Trusted Publishing configuration.
+
 ## 0.2.1
 
 ### Patch Changes
