@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- 4c75065: Configure Trusted Publishing (OIDC) for secure npm publishing instead of NPM_TOKEN
+
 ## 0.2.0
 
 ### Minor Changes
