@@ -1,10 +1,32 @@
 # GitHub Actions Setup for Changesets
 
-This document explains how to configure GitHub Actions permissions for the Changesets release workflow in your organization, including setting up secure Trusted Publishing (OIDC) for npm.
+This document explains how to configure GitHub Actions permissions for the Changesets release workflow in your organization, including setting up npm publishing.
 
-## Trusted Publishing with npm (Recommended)
+## Current Publishing Method
 
-This project uses **Trusted Publishing** (OIDC) instead of long-lived npm tokens. This is more secure and the recommended approach by npm.
+**Note**: This project currently uses `NPM_TOKEN` for npm publishing. Trusted Publishing (OIDC) is planned for the future when npm provides better GitHub Actions integration.
+
+### Setting Up NPM_TOKEN (Current Method)
+
+1. Create an npm Automation token:
+   - Go to [npm Access Tokens](https://www.npmjs.com/settings/[your-username]/tokens)
+   - Click **"Generate New Token"** → **"Automation"**
+   - Copy the token (shown only once!)
+
+2. Add token to GitHub Secrets:
+   - Repository → **Settings** → **Secrets and variables** → **Actions**
+   - Click **"New repository secret"**
+   - Name: `NPM_TOKEN`
+   - Value: *[paste token]*
+   - **"Add secret"**
+
+3. Done! The workflow will automatically use `NPM_TOKEN` for publishing.
+
+---
+
+## Trusted Publishing with npm (Future)
+
+**Note**: npm Trusted Publishing (OIDC) is the recommended secure approach, but currently has limited GitHub Actions support. This section documents the planned setup for when full integration is available.
 
 ### What is Trusted Publishing?
 
@@ -15,7 +37,17 @@ Trusted Publishing eliminates the need for npm tokens by using OpenID Connect (O
 - ✅ **Provenance** - Automatically generates software supply chain transparency
 - ✅ **Best practice** - Recommended by npm and GitHub
 
-### Setting Up Trusted Publishing
+### Why Not Using It Now?
+
+As of January 2025, npm Trusted Publishing requires:
+
+1. Manual OIDC token exchange (not well integrated with GitHub Actions)
+2. Complex configuration beyond standard npm packages
+3. Limited documentation for GitHub Actions workflows
+
+When npm provides better GitHub Actions integration, we will migrate to Trusted Publishing.
+
+### Setting Up Trusted Publishing (Future Reference)
 
 #### Step 1: Create a Publisher in npm
 
@@ -123,7 +155,6 @@ Both workflow files use **fine-grained permissions** for security:
 - **Release workflow** (`.github/workflows/release.yml`):
   - `contents: write` - for committing version bumps
   - `pull-requests: write` - for creating release PRs
-  - `id-token: write` - for Trusted Publishing with npm
 
 This follows the principle of least privilege - each workflow has only the permissions it needs.
 
@@ -131,7 +162,17 @@ This follows the principle of least privilege - each workflow has only the permi
 
 For the Changesets release workflow to work, you need to configure your repository or organization settings:
 
-### Option 1: Repository-Level Settings (Recommended for Public Repos)
+### Option 1: Fine-grained Permissions (Recommended)
+
+Enable **"Fine-grained permissions for workflows"** in organization settings:
+
+1. **Organization Settings** → **Actions** → **General**
+2. Select **"Fine-grained permissions for workflows"**
+3. **Save**
+
+After this, each workflow will have only the permissions specified in its YAML file.
+
+### Option 2: Repository-Level Settings (Alternative)
 
 1. Go to **Settings** → **Actions** → **General**
 2. Under **Workflow permissions**, select:
@@ -139,7 +180,7 @@ For the Changesets release workflow to work, you need to configure your reposito
 3. ✅ Check **Allow GitHub Actions to create and approve pull requests**
 4. Click **Save**
 
-### Option 2: Organization-Level Settings (For Private/Org Repos)
+### Option 3: Organization-Level Settings (For Private/Org Repos)
 
 If your organization restricts workflow permissions:
 
@@ -180,7 +221,6 @@ If you want to minimize automation permissions:
 - `contents: read` - CI can checkout code, but cannot modify
 - `contents: write` - Release can commit version bumps and tags
 - `pull-requests: write` - Release can create version PRs
-- `id-token: write` - Release can generate OIDC tokens for Trusted Publishing
 
 ### For Organization Security
 
@@ -210,11 +250,28 @@ After configuration, verify it works:
 
 **Solution**: Ensure the workflow has `contents: write` permission (already configured in `.github/workflows/release.yml`).
 
-### Permission denied when publishing
+### Error: "ENEEDAUTH" when publishing to npm
 
-**Solution**: Configure Trusted Publishing in npm (see "Setting Up Trusted Publishing" above).
+**Cause**: `NPM_TOKEN` secret is not set or expired.
 
-Do NOT use `NPM_TOKEN` - this project uses Trusted Publishing for security.
+**Solution**:
+
+1. Create or regenerate npm Automation token: [npmjs.com/settings/tokens](https://www.npmjs.com/settings/[your-username]/tokens)
+2. Add/update `NPM_TOKEN` in GitHub Secrets
+3. Re-run the failed workflow
+
+### Error: "404 Not Found" when publishing
+
+**Cause**: Package doesn't exist on npm yet (first publication).
+
+**Solution**: Publish the first version manually:
+
+```bash
+npm login
+bun changeset publish
+```
+
+After first publication, automatic publishing will work.
 
 ## Additional Resources
 
@@ -223,13 +280,20 @@ Do NOT use `NPM_TOKEN` - this project uses Trusted Publishing for security.
 - [GitHub Actions: Managing workflow permissions](https://docs.github.com/en/actions/managing-workflow-runs-in-github-actions/managing-workflow-permissions)
 - [OAuth scopes and permissions for GitHub Actions](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token)
 
-### Trusted Publishing
+### npm Publishing
 
-- [npm: About Trusted Publishing](https://docs.npmjs.com/generating-provenance-steps)
-- [npm: Configuring Trusted Publishing](https://docs.npmjs.com/creating-and-viewing-access-tokens#configuring-trusted-publishing)
-- [GitHub: About security hardening with OpenID Connect](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
+- [npm: Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens)
+- [npm: About automation tokens](https://docs.npmjs.com/about-access-tokens#automation-tokens)
 
 ### Changesets
 
 - [Changesets: GitHub Action](https://github.com/changesets/action)
 - [Changesets Documentation](https://github.com/changesets/changesets)
+
+### Future Reading: Trusted Publishing
+
+When npm provides better GitHub Actions integration, these resources will be useful:
+
+- [npm: About Trusted Publishing](https://docs.npmjs.com/generating-provenance-steps)
+- [npm: Configuring Trusted Publishing](https://docs.npmjs.com/creating-and-viewing-access-tokens#configuring-trusted-publishing)
+- [GitHub: About OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)

@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
 
 jobs:
   release:
@@ -17,7 +16,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      id-token: write
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -36,10 +34,9 @@ jobs:
         run: bun run build
 
       - name: Configure npm for Trusted Publishing
-        uses: npm/auth-providers@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          workload-id-provider: npm
+        run: |
+          echo "@neiropacks:registry=https://registry.npmjs.org/" > .npmrc
+          echo "//registry.npmjs.org/:_authToken=\${{ secrets.NPM_TOKEN }}" >> .npmrc
 
       - name: Create Release Pull Request or Publish
         id: changesets
