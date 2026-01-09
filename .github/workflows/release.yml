@@ -39,14 +39,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build Packages
-        run: pnpm -r --filter './packages/*' build
-
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
-          version: pnpm changeset version
+          version: pnpm changeset version && pnpm install && pnpm -r --filter './packages/*' build
           publish: pnpm publish -r
           title: "chore: Release packages"
           commit: "chore: Release packages"
