@@ -144,16 +144,16 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: bun install
+        run: pnpm install
 
       - name: Build Packages
-        run: bun run build
+        run: pnpm run build
 
       - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
         with:
-          version: bun changeset version
-          publish: bun changeset publish
+          version: pnpm changeset version && pnpm install
+          publish: pnpm publish -r
           title: "chore: Release packages"
           commit: "chore: Release packages"
         env:
@@ -295,7 +295,7 @@ Before setting up npm Trusted Publishing:
 
 ```bash
 # Dry run to test OIDC configuration
-bun changeset publish --dry-run
+pnpm changeset publish --dry-run
 
 # Test with canary release (optional)
 npm publish --tag canary

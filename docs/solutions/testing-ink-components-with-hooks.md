@@ -413,7 +413,7 @@ describe('getElementPosition', () => {
 ### Geometry Utilities Tests (`src/utils/geometry.test.ts`)
 
 ```typescript
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { isPointInRect, rectsIntersect, calculateRectIntersection } from './utils/geometry';
 
 describe('isPointInRect', () => {
@@ -445,7 +445,7 @@ describe('isPointInRect', () => {
 ### Position/Dimension Tests (`src/geometry.test.ts`)
 
 ```typescript
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { getElementPosition, getElementDimensions, getBoundingClientRect } from './geometry';
 import { createMockDOMElement, createMockDOMElementChain } from '../test/mocks/ink-element';
 
@@ -493,7 +493,7 @@ describe('getElementPosition', () => {
 ### React Hooks Tests (`src/hooks.test.tsx`)
 
 ```typescript
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { render } from 'ink-testing-library';
 import React from 'react';
 import { Box, Text } from 'ink';
@@ -594,13 +594,13 @@ packages/ink-mouse/
 
 ```bash
 # Run all tests
-bun test
+pnpm test
 
 # Run specific test file
-bun test src/geometry.test.ts
+pnpm test src/geometry.test.ts
 
 # Run with coverage (if configured)
-bun test --coverage
+pnpm test --coverage
 ```
 
 ## Cross-References
