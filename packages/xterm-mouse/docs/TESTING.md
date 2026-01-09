@@ -15,7 +15,7 @@
 
 ## Overview
 
-xterm-mouse uses **Bun's built-in test runner** (`bun test`) for all testing. Tests are located alongside the source files they test, following the co-location pattern with `.test.ts` suffix.
+xterm-mouse uses **Vitest** for all testing. Tests are located alongside the source files they test, following the co-location pattern with `.test.ts` suffix.
 
 ```
 src/
@@ -36,19 +36,19 @@ src/
 ### Run All Tests
 
 ```bash
-bun test
+pnpm test
 ```
 
 ### Run Specific Test File
 
 ```bash
-bun test src/core/Mouse.test.ts
+pnpm test src/core/Mouse.test.ts
 ```
 
 ### Run with Coverage
 
 ```bash
-bun test --coverage
+pnpm test --coverage
 ```
 
 ### Watch Mode
@@ -56,23 +56,23 @@ bun test --coverage
 For development, use `--watch` for automatic re-running on file changes:
 
 ```bash
-bun test --watch
+pnpm test --watch
 ```
 
 ## Test Framework
 
-We use **Bun's native test runner**, which provides:
+We use **Vitest**, which provides:
 
 - **Fast test execution** - Tests run in parallel by default
 - **Built-in assertions** - `expect()` API compatible with Jest
-- **Mocking support** - `mock()`, `spy()` functions
+- **Mocking support** - `vi.mock()`, `vi.fn()` functions
 - **Test organization** - `test()`, `describe()` blocks
 - **Async/await support** - Native Promise handling
 
 ### Available Test Utilities
 
 ```typescript
-import { test, expect, describe, mock } from 'bun:test';
+import { test, expect, describe, vi } from 'vitest';
 ```
 
 | Function | Purpose |
@@ -80,7 +80,7 @@ import { test, expect, describe, mock } from 'bun:test';
 | `test(name, fn)` | Define a test case |
 | `describe(name, fn)` | Group related tests |
 | `expect(value)` | Assert conditions |
-| `mock(fn)` | Create a mock function |
+| `vi.fn()` | Create a mock function |
 | `expect.assertions()` | Verify assertion count |
 
 ## Test Structure
@@ -244,7 +244,7 @@ Use mocks to verify function calls:
 ```typescript
 test('Mouse should not emit click event if distance is too large', async () => {
   const mouse = new Mouse(makeFakeTTYStream());
-  const clickSpy = mock(() => {});
+  const clickSpy = vi.fn();
 
   mouse.on('click', clickSpy);
 
@@ -266,7 +266,7 @@ When testing `once()` methods, verify the listener is called only once:
 ```typescript
 test('Mouse.once() should call listener only once', async () => {
   const mouse = new Mouse(makeFakeTTYStream());
-  const listenerSpy = mock(() => {});
+  const listenerSpy = vi.fn();
 
   mouse.once('press', listenerSpy);
   mouse.enable();
@@ -450,7 +450,7 @@ const SGR_WHEEL_RIGHT = '\x1b[<67;10;20M';
 
 Before submitting tests, ensure:
 
-- [ ] All tests pass with `bun test`
+- [ ] All tests pass with `pnpm test`
 - [ ] Test name clearly describes what is being tested
 - [ ] AAA pattern is followed (Arrange-Act-Assert)
 - [ ] Resources are cleaned up (even on failure)
@@ -463,6 +463,6 @@ Before submitting tests, ensure:
 
 ## Additional Resources
 
-- [Bun Test Documentation](https://bun.sh/docs/test)
+- [Vitest Documentation](https://vitest.dev/)
 - [Project README](../README.md)
 - [Architecture Documentation](./ARCHITECTURE.md)

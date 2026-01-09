@@ -38,7 +38,7 @@ This permission allows GitHub Actions to generate OIDC tokens for npm authentica
 
 #### Step 3: Test the Setup
 
-1. Create a changeset: `bun changeset`
+1. Create a changeset: `pnpm changeset`
 2. Commit and push to main
 3. GitHub Actions will create a release PR
 4. Merge the PR
@@ -149,7 +149,7 @@ If you want to minimize automation permissions:
 
    ```bash
    # After merging changes to main
-   bun changeset version
+   pnpm changeset version
 
    # Push the version changes
    git push
@@ -185,7 +185,7 @@ If your organization has strict security requirements:
 
 After configuration, verify it works:
 
-1. Create a changeset: `bun changeset`
+1. Create a changeset: `pnpm changeset`
 2. Commit and push to main
 3. Check **Actions** tab for the "Release" workflow
 4. Confirm a PR is created for `changeset-release/main`
@@ -219,7 +219,7 @@ After configuration, verify it works:
 
 ```bash
 npm login
-bun changeset publish
+pnpm changeset publish
 ```
 
 After first publication, automatic publishing will work.

@@ -337,7 +337,7 @@ jobs:
     steps:
       - uses: changesets/action@v1
         with:
-          publish: bun changeset publish  # Publishes all packages
+          publish: pnpm changeset publish  # Publishes all packages
 ```
 
 **Monorepo strategy**:
@@ -461,12 +461,12 @@ jobs:
 
       - name: Install and build
         run: |
-          bun install
-          bun run build
+          pnpm install
+          pnpm run build
 
       - uses: changesets/action@v1
         with:
-          publish: bun changeset publish
+          publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
@@ -491,12 +491,12 @@ jobs:
   release-ui:
     # Publish UI packages
     steps:
-      - run: bun changeset publish --filter @ink-tools/ink-*
+      - run: pnpm changeset publish --filter @ink-tools/ink-*
 
   release-utils:
     # Publish utility packages
     steps:
-      - run: bun changeset publish --filter @ink-tools/xterm-*
+      - run: pnpm changeset publish --filter @ink-tools/xterm-*
 ```
 
 **Trade-offs**:
@@ -600,10 +600,10 @@ Test publishing without actual publication:
 
 ```bash
 # Changesets dry run
-bun changeset publish --dry-run
+pnpm changeset publish --dry-run
 
 # Test build process
-bun run build
+pnpm run build
 
 # Verify package contents
 ls -la packages/*/dist/
@@ -621,7 +621,7 @@ npm publish --tag canary
 npm view @ink-tools/package-name@canary --json | jq '.attestations'
 
 # If successful, proceed to production release
-bun changeset publish
+pnpm changeset publish
 ```
 
 #### Verification Commands
@@ -726,7 +726,7 @@ cat package.json | grep -A2 "publishConfig\|repository"
 
 - run: npm install -g npm@latest  # ❌ Remove this
 
-- run: bun changeset publish
+- run: pnpm changeset publish
   env:
     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}  # ❌ Remove this
 ```
@@ -751,7 +751,7 @@ jobs:
           node-version: "lts/*"
           registry-url: "https://registry.npmjs.org"
 
-      - run: bun changeset publish
+      - run: pnpm changeset publish
         env:
           NPM_CONFIG_PROVENANCE: true  # ✅ Add this
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -789,7 +789,7 @@ For each package in npm:
 
 ```bash
 # Create changeset for test version
-bun changeset
+pnpm changeset
 # Select packages, enter "minor" bump, add message: "test OIDC"
 
 # Commit changeset
@@ -884,7 +884,7 @@ Keep OIDC configuration but add diagnostics:
     npm config list
 
 - name: Publish with diagnostics
-  run: bun changeset publish --verbose
+  run: pnpm changeset publish --verbose
   env:
     NPM_CONFIG_LOGLEVEL: verbose
     NPM_CONFIG_PROVENANCE: true
@@ -964,7 +964,7 @@ npm view @ink-tools/package-name repository.url
 
 ```bash
 npm login
-bun changeset publish
+pnpm changeset publish
 ```
 
 After first publication, OIDC will work.

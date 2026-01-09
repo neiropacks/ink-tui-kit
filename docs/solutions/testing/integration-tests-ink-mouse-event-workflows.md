@@ -193,7 +193,7 @@ Terminal mouse events are emitted by the terminal emulator, not programmatically
 ## Test Results
 
 ```bash
-cd packages/ink-mouse && bun test
+cd packages/ink-mouse && pnpm test
 
 # ✅ 148 tests passing (was 138, added 10)
 # ✅ 0 failures
@@ -370,7 +370,7 @@ Always document what you can't test and why.
 ### External
 
 - [ink-testing-library Documentation](https://github.com/vadimdemedes/ink-testing-library)
-- [Bun Test Documentation](https://bun.sh/docs/test)
+- [Vitest Documentation](https://bun.sh/docs/test)
 - [React Testing Library: Common Mistakes](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
 
 ## Key Takeaways
@@ -384,5 +384,5 @@ Always document what you can't test and why.
 ## Sources
 
 - [Ink Testing Library GitHub](https://github.com/vadimdemedes/ink-testing-library)
-- [Bun Test Documentation](https://bun.sh/docs/test)
+- [Vitest Documentation](https://bun.sh/docs/test)
 - [React Testing Library: Common Mistakes](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)

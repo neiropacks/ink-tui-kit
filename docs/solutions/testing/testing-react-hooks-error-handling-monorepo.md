@@ -47,7 +47,7 @@ prevention:
   - Use TestHookOutsideProvider pattern for testing hooks that throw errors
   - Configure biome.json with "root": false and "extends": //" for monorepo subpackages
   - Disable useHookAtTopLevel only for test files, not production code
-  - Run tests with bun test for fast execution
+  - Run tests with pnpm test for fast execution
   - Use ink-testing-library for component rendering
 ---
 
@@ -306,7 +306,7 @@ export function createMockClickEvent(
 
 ```bash
 cd packages/ink-mouse
-bun test
+pnpm test
 
 # ✅ 101 tests passing (Phase 1: 53 + Phase 2: 48)
 # ✅ 0 failures
@@ -461,7 +461,7 @@ packages/ink-mouse/
 - [Biome: useHookAtTopLevel Rule](https://biomejs.dev/linter/rules/use-hook-at-top-level/)
 - [React Hooks Rules](https://react.dev/reference/rules)
 - [Ink Testing Guide](https://github.com/vadimdemedes/ink#testing)
-- [Bun Test Documentation](https://bun.sh/docs/test)
+- [Vitest Documentation](https://bun.sh/docs/test)
 
 ## Key Takeaways
 
