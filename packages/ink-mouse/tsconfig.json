@@ -2,15 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "baseUrl": ".",
-    "paths": {
-      "xterm-mouse": [
-        "../xterm-mouse/src"
-      ],
-      "xterm-mouse/*": [
-        "../xterm-mouse/src/*"
-      ]
-    }
+    "baseUrl": "."
   },
   "include": [
     "src/**/*"

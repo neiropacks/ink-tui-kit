@@ -12,9 +12,9 @@
  * 1: One or more configs invalid
  */
 
-import { readFileSync, readdirSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -84,9 +84,7 @@ for (const pkgDir of packageDirs) {
 
   // Check 3: Uses mergeConfig
   if (!configContent.includes('mergeConfig')) {
-    warnings.push(
-      `${pkgName}: vitest.config.ts should use mergeConfig from vitest/config`,
-    );
+    warnings.push(`${pkgName}: vitest.config.ts should use mergeConfig from vitest/config`);
     console.log(`  ⚠  Should use mergeConfig`);
   } else {
     console.log(`  ✓ Uses mergeConfig`);
@@ -100,12 +98,12 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 
 if (warnings.length > 0) {
   console.log('\n⚠️  Warnings:');
-  warnings.forEach((warning) => console.log(`  - ${warning}`));
+  warnings.forEach((warning) => void console.log(`  - ${warning}`));
 }
 
 if (errors.length > 0) {
   console.log('\n❌ Errors:');
-  errors.forEach((error) => console.log(`  - ${error}`));
+  errors.forEach((error) => void console.log(`  - ${error}`));
   console.log('\n❌ Vitest config validation failed!\n');
   process.exit(1);
 } else {
