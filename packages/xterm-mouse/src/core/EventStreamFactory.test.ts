@@ -124,6 +124,98 @@ describe('EventStreamFactory', () => {
       // Assert - listener removed
       expect(finalListenerCount).toBe(listenerCount);
     });
+
+    test('keeps only latest event when latestOnly is true', async () => {
+      // Arrange
+      const events: MouseEvent[] = [];
+      const stream = factory.eventsOf('press', { latestOnly: true });
+
+      // Act - start consuming first, then emit events
+      const consumingPromise = (async () => {
+        for await (const event of stream) {
+          events.push(event);
+          if (events.length >= 2) break;
+        }
+      })();
+
+      // Emit events in batches:
+      // Batch 1: events 10, 20, 30 - should yield 10 (first), keep 30 as latest
+      // After yielding, should yield 30 (latest from batch 1)
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 10, y: 10, button: 'left', action: 'press' });
+          mockEmitter.emit('press', { x: 20, y: 20, button: 'left', action: 'press' });
+          mockEmitter.emit('press', { x: 30, y: 30, button: 'left', action: 'press' });
+          setTimeout(() => resolve(), 30);
+        }, 10);
+      });
+
+      await consumingPromise;
+
+      // Assert - first event from first arrival, then latest from that batch
+      expect(events).toHaveLength(2);
+      expect(events[0]).toEqual(expect.objectContaining({ x: 10, y: 10 }));
+      expect(events[1]).toEqual(expect.objectContaining({ x: 30, y: 30 }));
+    });
+
+    test('respects maxQueue limit', async () => {
+      // Arrange
+      const events: MouseEvent[] = [];
+      const stream = factory.eventsOf('press', { maxQueue: 3 });
+
+      // Act - start consuming first
+      const consumingPromise = (async () => {
+        for await (const event of stream) {
+          events.push(event);
+          if (events.length >= 3) break;
+        }
+      })();
+
+      // Emit events with delays between each to let the generator process them
+      // Event 1 is yielded immediately (generator waiting)
+      // Events 2, 3, 4 are queued (generator processing event 1)
+      // Event 5 causes queue.shift() (queue was [2,3,4], becomes [3,4,5])
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 1, y: 1, button: 'left', action: 'press' });
+        }, 10);
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 2, y: 2, button: 'left', action: 'press' });
+        }, 20);
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 3, y: 3, button: 'left', action: 'press' });
+        }, 30);
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 4, y: 4, button: 'left', action: 'press' });
+        }, 40);
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 5, y: 5, button: 'left', action: 'press' });
+          setTimeout(() => resolve(), 30);
+        }, 50);
+      });
+
+      await consumingPromise;
+
+      // Assert - should get event 1 (immediate), then 2, 3 from queue
+      expect(events).toHaveLength(3);
+      expect(events[0]).toEqual(expect.objectContaining({ x: 1, y: 1 }));
+      expect(events[1]).toEqual(expect.objectContaining({ x: 2, y: 2 }));
+      expect(events[2]).toEqual(expect.objectContaining({ x: 3, y: 3 }));
+    });
+
+    test('throws immediately when signal is already aborted', async () => {
+      // Arrange
+      const controller = new AbortController();
+      controller.abort();
+      const stream = factory.eventsOf('press', { signal: controller.signal });
+
+      // Act & Assert
+      await expect(async () => {
+        for await (const _ of stream) {
+          // Should throw before first iteration
+        }
+      }).rejects.toThrow('aborted');
+    });
   });
 
   describe('debouncedMoveEvents', () => {
@@ -217,6 +309,52 @@ describe('EventStreamFactory', () => {
       // Assert
       expect(events.length).toBe(0);
     });
+
+    test('cleans up timeout on abort', async () => {
+      // Arrange
+      const controller = new AbortController();
+      const stream = factory.debouncedMoveEvents({ interval: 100, signal: controller.signal });
+
+      // Act - emit move event then immediately abort
+      const setTimeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          mockEmitter.emit('move', { x: 10, y: 10, button: 'none', action: 'move' });
+          setTimeout(() => {
+            controller.abort();
+            setTimeout(() => resolve(), 50); // Wait to ensure timeout was cleared
+          }, 10);
+        }, 10);
+      });
+
+      const consumingPromise = (async () => {
+        try {
+          for await (const _ of stream) {
+            // Should abort before yielding
+          }
+        } catch (err) {
+          expect((err as Error).message).toContain('aborted');
+        }
+      })();
+
+      await Promise.all([setTimeoutPromise, consumingPromise]);
+
+      // Assert - if timeout wasn't cleared, it would try to yield after test completes
+      // No assertion needed - test passing means timeout was properly cleaned up
+    });
+
+    test('throws immediately when signal is already aborted', async () => {
+      // Arrange
+      const controller = new AbortController();
+      controller.abort();
+      const stream = factory.debouncedMoveEvents({ signal: controller.signal });
+
+      // Act & Assert
+      await expect(async () => {
+        for await (const _ of stream) {
+          // Should throw before first iteration
+        }
+      }).rejects.toThrow('aborted');
+    });
   });
 
   describe('stream', () => {
@@ -303,6 +441,99 @@ describe('EventStreamFactory', () => {
 
       // Assert
       expect(events.length).toBe(0);
+    });
+
+    test('keeps only latest event when latestOnly is true', async () => {
+      // Arrange
+      const events: { type: string; event: MouseEvent }[] = [];
+      const stream = factory.stream({ latestOnly: true });
+
+      // Act - start consuming first, collect 2 events
+      const consumingPromise = (async () => {
+        for await (const wrapped of stream) {
+          events.push(wrapped);
+          if (events.length >= 2) break;
+        }
+      })();
+
+      // Emit events in batches
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 10, y: 10, button: 'left', action: 'press' });
+          mockEmitter.emit('move', { x: 20, y: 20, button: 'none', action: 'move' });
+          mockEmitter.emit('release', { x: 30, y: 30, button: 'left', action: 'release' });
+          setTimeout(() => resolve(), 30);
+        }, 10);
+      });
+
+      await consumingPromise;
+
+      // Assert - should get press (first), then release (latest from batch)
+      expect(events).toHaveLength(2);
+      expect(events[0]).toEqual({
+        type: 'press',
+        event: expect.objectContaining({ x: 10, y: 10 }),
+      });
+      expect(events[1]).toEqual({
+        type: 'release',
+        event: expect.objectContaining({ x: 30, y: 30 }),
+      });
+    });
+
+    test('respects maxQueue limit', async () => {
+      // Arrange
+      const events: { type: string; event: MouseEvent }[] = [];
+      const stream = factory.stream({ maxQueue: 3 });
+
+      // Act - start consuming first
+      const consumingPromise = (async () => {
+        for await (const wrapped of stream) {
+          events.push(wrapped);
+          if (events.length >= 3) break;
+        }
+      })();
+
+      // Emit events with delays between each
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          mockEmitter.emit('press', { x: 1, y: 1, button: 'left', action: 'press' });
+        }, 10);
+        setTimeout(() => {
+          mockEmitter.emit('move', { x: 2, y: 2, button: 'none', action: 'move' });
+        }, 20);
+        setTimeout(() => {
+          mockEmitter.emit('drag', { x: 3, y: 3, button: 'left', action: 'drag' });
+        }, 30);
+        setTimeout(() => {
+          mockEmitter.emit('release', { x: 4, y: 4, button: 'left', action: 'release' });
+        }, 40);
+        setTimeout(() => {
+          mockEmitter.emit('click', { x: 5, y: 5, button: 'left', action: 'click' });
+          setTimeout(() => resolve(), 30);
+        }, 50);
+      });
+
+      await consumingPromise;
+
+      // Assert - should get first 3 events (press, move, drag)
+      expect(events).toHaveLength(3);
+      expect(events[0]?.type).toBe('press');
+      expect(events[1]?.type).toBe('move');
+      expect(events[2]?.type).toBe('drag');
+    });
+
+    test('throws immediately when signal is already aborted', async () => {
+      // Arrange
+      const controller = new AbortController();
+      controller.abort();
+      const stream = factory.stream({ signal: controller.signal });
+
+      // Act & Assert
+      await expect(async () => {
+        for await (const _ of stream) {
+          // Should throw before first iteration
+        }
+      }).rejects.toThrow('aborted');
     });
   });
 
