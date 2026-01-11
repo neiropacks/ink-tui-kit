@@ -1,98 +1,68 @@
 # CLAUDE.md
 
-This file provides guidance for the ink-mouse package.
+Package for adding mouse support to Ink applications using React components and hooks.
 
-## Package Overview
-
-`@ink-tools/ink-mouse` is a package for adding mouse support to Ink applications. It provides
-React components and hooks for handling mouse events in terminal environments.
-
-## Development
-
-### Installation
+## Common Commands
 
 ```bash
-pnpm install
+pnpm install                # Install dependencies
+pnpm run build              # Build using tsup
+pnpm run dev                # Watch mode
+pnpm test                   # Run tests
+pnpm run test:watch         # Watch mode for tests
+pnpm run test:coverage      # Coverage report
+pnpm run typecheck          # TypeScript check
 ```
 
-### Building
+Format/lint handled from monorepo root.
 
-```bash
-pnpm run build
+## Code Organization
+
+```text
+src/
+├── index.ts              # Public API exports
+├── constants.ts          # Constants
+├── context.ts            # React context for mouse state
+├── geometry.ts           # Geometry utilities (Point, Rect)
+├── provider.tsx          # MouseProvider component
+├── types.ts              # TypeScript types
+├── hooks/                # React hooks
+│   └── useMouse.ts       # Main hook
+├── utils/                # Utility functions
+└── integration/          # Integration utilities
 ```
 
-### Development Mode
+## Architecture
 
-```bash
-pnpm run dev
-```
+**Provider Pattern**: MouseProvider wraps app, manages mouse tracking via xterm-mouse, maintains state, emits events. useMouse hook provides state and event handlers to components.
 
-## Testing
+**Dependencies**:
 
-Use **Vitest** to run tests.
+- `ink` ^6.6.0 (peer)
+- `react` ^19.2.3 (peer)
+- `xterm-mouse` (workspace:*) for low-level protocol
 
-```ts
-import { test, expect } from "vitest";
-
-test("description", () => {
-  expect(value).toBe(expected);
-});
-```
+**Additional files**: TEST-GUIDE.md, CONTRIBUTING.md, examples/
 
 ## Ink Component Development
-
-This package uses **Ink** (React for CLIs). Key concepts:
-
-### Component Structure
 
 ```tsx
 import type { FC } from 'react';
 import { Box, Text } from 'ink';
 
-const Example: FC<{ prop: string }> = ({ prop }) => {
-  return (
-    <Box>
-      <Text>{prop}</Text>
-    </Box>
-  );
-};
-
-export default Example;
+const Example: FC<{ prop: string }> = ({ prop }) => (
+  <Box><Text>{prop}</Text></Box>
+);
 ```
 
-### Mouse Handling
+## Mouse Handling
 
-This package specifically deals with mouse events in terminals:
+Supports: position tracking, click detection, scroll, drag/drop, terminal protocols (xterm, SGR).
 
-- Mouse position tracking
-- Click detection
-- Scroll handling
-- Drag and drop support
-- Terminal-specific mouse protocols (xterm, SGR)
-
-### Terminal Considerations
-
-- Not all terminals support mouse events
-- Mouse support varies by terminal emulator
-- Always provide keyboard alternatives
-- Test across different terminals (iTerm, Terminal.app, Alacritty, etc.)
-
-## Dependencies
-
-- `ink` ^6.6.0 - React for CLIs (peer dependency)
-- `react` ^19.2.3 - React (peer dependency)
-- `xterm-mouse` - Low-level xterm mouse protocol handling
+**Terminal considerations**: Not all terminals support mouse. Always provide keyboard alternatives. Test across terminals (iTerm, Terminal.app, Alacritty).
 
 ## Common Issues
 
-### Mouse Events Not Working
+**Mouse events not working**: Check terminal support, ensure mouse tracking enabled, some terminals require explicit activation.
 
-- Check if terminal supports mouse events
-- Ensure mouse tracking is enabled in your terminal
-- Some terminals require explicit mouse mode activation
-
-### Performance
-
-- Mouse events can fire rapidly; consider debouncing
-- Use React.memo for components that re-render on mouse events
-- Optimize render cycles in components with mouse handlers
+**Performance**: Mouse events fire rapidly - consider debouncing, use React.memo, optimize render cycles.

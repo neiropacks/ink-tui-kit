@@ -1,188 +1,85 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project Overview
-
-This is a TypeScript library for capturing and parsing mouse events from xterm-compatible terminals in Node.js applications. It provides both event-based (EventEmitter) and streaming (async generators) APIs for handling terminal mouse interactions.
-
-**Key Architecture:**
-
-- **Mouse class** (`src/core/Mouse.ts`): Main class that manages mouse event tracking, handles stdin/stdout streams, and emits events
-- **ANSI Parser** (`src/parser/`): Parses raw ANSI escape sequences into structured mouse events
-  - Supports both SGR (modern) and ESC (legacy) mouse protocols
-  - Implements run-length deduplication to avoid duplicate events
-- **Types** (`src/types/index.ts`): Discriminated union types for mouse events with protocol-specific variants
+TypeScript library for capturing/parsing mouse events from xterm-compatible terminals. Event-based (EventEmitter) and streaming (async generators) APIs.
 
 ## Common Commands
 
-### Building
-
 ```bash
-pnpm run build          # Build using tsup (bundles ESM output to dist/)
+pnpm run build              # Build (ESM + CJS to dist/)
+pnpm run dev                # Watch mode
+
+pnpm test                   # Run tests
+pnpm run test:coverage      # Coverage report
+
+pnpm run typecheck          # TypeScript check
+pnpm run lint/format        # Via Biome/dprint from root
+
+pnpm run dev:basic          # Run basic example
+pnpm run dev:streaming      # Run streaming example
 ```
 
-### Testing
+Additional examples: `dev:custom-threshold`, `dev:pause-resume`, `dev:interactive-buttons/menu/grid`
 
-```bash
-pnpm test               # Run all tests
-pnpm run coverage       # Run tests with coverage report
-```
+## Architecture
 
-### Code Quality
+**Core components**:
 
-```bash
-pnpm run lint           # Check code with Biome and dprint
-pnpm run format         # Format code with Biome and dprint
-pnpm run typecheck      # Type check with TypeScript
-```
+- **Mouse** (`src/core/Mouse.ts`): Main class managing mouse tracking, stdin/stdout, emits events
+- **ANSI Parser** (`src/parser/`): Parses escape sequences, supports SGR (modern) and ESC (legacy) protocols, run-length deduplication
+- **Types** (`src/types/`): Discriminated unions for mouse events
 
-### Development
+**Event flow**: `Mouse.enable()` → raw stdin → ANSI parser → EventEmitter/async generators → `Mouse.disable()`
 
-```bash
-pnpm run dev:basic         # Run basic example with hot-reload
-pnpm run dev:streaming     # Run streaming example with hot-reload
-```
+**Protocols**: SGR (`\x1b[<Cb;Cx;CyM/m`) unlimited coordinates, ESC (`\x1b[MCbCxCy`) limited to 223/95. Parser auto-detects.
 
-## Architecture Details
+**Event types**: `press`, `release`, `click` (synthesized), `drag`, `move`, `wheel`
 
-### Terminal Capability Detection
+**Resource management**: FinalizationRegistry for GC cleanup, but always call `destroy()` explicitly. `pause()`/`resume()` for fast throttling.
 
-The `Mouse` class provides static methods to check terminal support before enabling mouse tracking:
+**Streaming API**: `eventsOf()`/`stream()` return async generators with AbortSignal, configurable queue (default 100, max 1000), `latestOnly` mode for high-frequency events.
 
-- **`Mouse.isSupported()`**: Returns `true` if both `process.stdin.isTTY` and `process.stdout.isTTY` are true
-- **`Mouse.checkSupport()`**: Returns detailed status from `Mouse.SupportCheckResult` enum:
-  - `Supported` - Terminal supports mouse events
-  - `NotTTY` - Input stream is not a TTY
-  - `OutputNotTTY` - Output stream is not a TTY
+**Type inference**: `EventByAction<T>` maps event action to specific type. `Mouse.on('wheel', ...)` knows `button` is wheel type. Exported from `src/types/eventHandler.ts`.
 
-This provides better UX than catching exceptions from `enable()` in non-TTY environments (CI, piped input, IDE terminals).
-
-### Mouse Event Flow
-
-1. `Mouse.enable()` puts stdin in raw mode and sends ANSI codes to enable terminal mouse tracking
-2. Raw stdin data is received and parsed by `parseMouseEvents()` from the ANSI parser
-3. Parsed events are emitted through an EventEmitter or yielded via async generators
-4. `Mouse.disable()` restores terminal state and sends ANSI codes to disable tracking
-
-### Protocol Support
-
-- **SGR Protocol** (`\x1b[<Cb;Cx;CyM` or `\x1b[<Cb;Cx;Cym`): Modern protocol with unlimited coordinates and clear press/release encoding
-- **ESC Protocol** (`\x1b[MCbCxCy`): Legacy protocol with coordinate limits (max 223, sometimes 95)
-
-The parser automatically detects which protocol is being used and returns a discriminated union type (`SGRMouseEvent | ESCMouseEvent`).
-
-### Event Types
-
-- `press`: Mouse button pressed
-- `release`: Mouse button released
-- `click`: Synthesized when press and release occur within `clickDistanceThreshold` (default: 1 cell)
-- `drag`: Mouse moved while button pressed
-- `move`: Mouse moved without button pressed
-- `wheel`: Mouse wheel scrolled
-
-### Resource Management
-
-The library uses **FinalizationRegistry** for automatic cleanup on garbage collection:
-
-- If a Mouse instance is GC'd without explicit cleanup, stdin listeners are removed automatically
-- Despite this safety net, **always call `destroy()`** when done with a Mouse instance for immediate cleanup
-- `pause()`/`resume()` provide fast event throttling without terminal state changes
-
-### Streaming API
-
-The `eventsOf()` and `stream()` methods return async generators with:
-
-- AbortSignal support for cancellation
-- Configurable queue size (`maxQueue`, default: 100, max: 1000)
-- `latestOnly` mode for high-frequency events (keeps only newest event)
-- Automatic listener cleanup on abort, completion, or error
-
-### TypeScript Type Inference
-
-The library provides advanced type inference for event handlers through discriminated union types:
-
-- **`EventByAction<T>`**: Maps event action to specific event type with narrowed button types
-  - `'wheel'` → `button: 'wheel-up' | 'wheel-down' | 'wheel-left' | 'wheel-right'`
-  - `'move'` → `button: 'none'`
-  - `'drag'` → `button: 'left' | 'middle' | 'right' | 'back' | 'forward'`
-  - `'press' | 'release' | 'click'` → `button: ButtonType` (all buttons)
-
-- **`TypedEventListener<T>`**: Type-safe listener with inferred event parameter type
-- **`ListenerFor<T>`**: Extracts listener type for a given event name
-- **`EventTypeFor<T>`**: Extracts event type for a given event name
-
-The `Mouse.on()` and `Mouse.off()` methods use these utilities to provide type-safe event handling:
-
-```typescript
-mouse.on('wheel', (event) => {
-  // TypeScript knows event.button is 'wheel-up' | 'wheel-down' | 'wheel-left' | 'wheel-right'
-  console.log(event.button);
-});
-```
-
-Type inference utilities are exported from `src/types/eventHandler.ts` and re-exported from `src/types/index.ts`.
-
-### One-Time Event Listeners
-
-The `Mouse.once()` method provides a convenient way to register listeners that automatically remove themselves after the first invocation:
-
-- **Automatic Cleanup**: Prevents memory leaks from forgotten listener removal
-- **Type-Safe**: Uses the same type inference as `on()` for accurate event types
-- **Pattern**: Follows the standard EventEmitter pattern for one-time listeners
-
-```typescript
-// Wait for single click - no manual cleanup needed
-mouse.once('click', (event) => {
-  console.log('Got one click!', event);
-  // Listener already removed
-});
-
-// Simplified one-time event handling
-mouse.once('wheel', (event) => {
-  // TypeScript knows event.button is wheel button type
-  console.log(`Scrolled: ${event.button}`);
-});
-```
-
-This eliminates the boilerplate of manually calling `off()` after handling one-time events.
+**One-time listeners**: `Mouse.once()` auto-removes after first invocation, type-safe like `on()`.
 
 ## Code Organization
 
 ```text
 src/
-├── index.ts           # Public API exports
+├── index.ts              # Public API
 ├── core/
-│   ├── Mouse.ts       # Main Mouse class implementation
-│   └── Mouse.test.ts  # Mouse class tests
+│   ├── Mouse.ts          # Main Mouse class
+│   └── Mouse.test.ts
 ├── parser/
-│   ├── ansiParser.ts  # ANSI escape sequence parser
+│   ├── ansiParser.ts     # ANSI parser
 │   ├── ansiParser.test.ts
-│   └── constants.ts   # ANSI codes and regex patterns
+│   └── constants.ts      # ANSI codes/regex
 └── types/
-    ├── index.ts       # Type definitions barrel export
-    ├── action.ts      # MouseEventAction type
-    ├── button.ts      # ButtonType union
-    ├── event.ts       # MouseEvent discriminated union
-    ├── eventHandler.ts  # Type inference utilities (EventByAction, TypedEventListener, etc.)
-    ├── eventHandler.test.ts  # Type inference tests
-    ├── options.ts     # MouseOptions interface
-    ├── error.ts       # MouseError class
-    └── stream.ts      # ReadableStreamWithEncoding type
+    ├── index.ts          # Barrel export
+    ├── action.ts         # MouseEventAction
+    ├── button.ts         # ButtonType union
+    ├── event.ts          # MouseEvent discriminated union
+    ├── eventHandler.ts   # Type inference utilities
+    ├── eventHandler.test.ts
+    ├── options.ts        # MouseOptions
+    ├── error.ts          # MouseError
+    └── stream.ts         # ReadableStreamWithEncoding
 ```
 
-## Testing Approach
+## Testing
 
-- Uses **Vitest** for all testing
-- Tests are co-located with source files (`.test.ts` suffix)
-- The `Mouse` class requires a TTY for integration tests - unit tests mock stdin/stdout
-- Run examples in a real terminal to verify mouse tracking behavior
+Vitest, tests co-located (`.test.ts`). Mouse class requires TTY for integration tests - unit tests mock stdin/stdout. Run examples in real terminal to verify.
 
 ## Development Notes
 
-- Use **pnpm** as the package manager
-- Use `pnpm test` to run tests (Vitest)
-- The library is ESM-only (`"type": "module"` in package.json)
-- Terminal mouse tracking **requires a TTY** - won't work in piped/non-interactive environments
-- **Check support before enabling**: Use `Mouse.isSupported()` or `Mouse.checkSupport()` to verify terminal capabilities before calling `mouse.enable()`
-- The `click` event is synthesized from `press` + `release` events, not directly from the terminal
+- Use **pnpm**
+- ESM-only (`"type": "module"`)
+- Terminal mouse tracking **requires TTY** - won't work in piped/non-interactive environments
+- **Check support before enabling**: Use `Mouse.isSupported()` or `Mouse.checkSupport()` to verify capabilities before `mouse.enable()`
+- `click` event is synthesized from `press` + `release`, not from terminal
+
+## Package Structure
+
+**Includes**: `examples/` (demo scripts), `docs/` (ARCHITECTURE.md, PROTOCOLS.md, TESTING.md), `test/` (fixtures), `CONTRIBUTING.md`
+
+**Build output**: ESM (`dist/index.js` + `.d.ts`) and CJS (`dist/index.cjs` + `.d.cts`). ESM-first with CJS compatibility.
