@@ -19,7 +19,8 @@ This is a TypeScript library for capturing and parsing mouse events from xterm-c
 ### Building
 
 ```bash
-pnpm run build          # Build using tsup (bundles ESM output to dist/)
+pnpm run build          # Build using tsup (outputs ESM and CJS to dist/)
+pnpm run dev            # Watch mode for development
 ```
 
 ### Testing
@@ -43,6 +44,16 @@ pnpm run typecheck      # Type check with TypeScript
 pnpm run dev:basic         # Run basic example with hot-reload
 pnpm run dev:streaming     # Run streaming example with hot-reload
 ```
+
+Additional example scripts available:
+
+- `dev:custom-threshold` - Custom click distance threshold
+- `dev:pause-resume` - Pause/resume event streaming
+- `dev:interactive-buttons` - Interactive button demo
+- `dev:interactive-menu` - Interactive menu demo
+- `dev:interactive-grid` - Interactive grid demo
+
+All examples are in the `examples/` directory.
 
 ## Architecture Details
 
@@ -170,6 +181,24 @@ src/
     ├── error.ts       # MouseError class
     └── stream.ts      # ReadableStreamWithEncoding type
 ```
+
+### Package Structure
+
+The package includes:
+
+- **examples/** - Example scripts demonstrating mouse interactions
+- **docs/** - Additional documentation (ARCHITECTURE.md, PROTOCOLS.md, TESTING.md)
+- **test/** - Additional test utilities and fixtures
+- **CONTRIBUTING.md** - Contribution guidelines
+
+### Build Output
+
+The package outputs both ESM and CJS formats:
+
+- ESM: `dist/index.js` with `dist/index.d.ts` types
+- CJS: `dist/index.cjs` with `dist/index.d.cts` types
+
+The package is ESM-first but provides CJS compatibility for legacy workflows.
 
 ## Testing Approach
 

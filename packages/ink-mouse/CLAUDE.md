@@ -7,7 +7,7 @@ This file provides guidance for the ink-mouse package.
 `@ink-tools/ink-mouse` is a package for adding mouse support to Ink applications. It provides
 React components and hooks for handling mouse events in terminal environments.
 
-## Development
+## Common Commands
 
 ### Installation
 
@@ -18,26 +18,71 @@ pnpm install
 ### Building
 
 ```bash
-pnpm run build
+pnpm run build          # Build using tsup
+pnpm run dev            # Watch mode for development
 ```
 
-### Development Mode
+### Testing
 
 ```bash
-pnpm run dev
+pnpm test               # Run all tests
+pnpm run test:watch     # Run tests in watch mode
+pnpm run test:coverage  # Run tests with coverage report
 ```
 
-## Testing
+### Code Quality
 
-Use **Vitest** to run tests.
-
-```ts
-import { test, expect } from "vitest";
-
-test("description", () => {
-  expect(value).toBe(expected);
-});
+```bash
+pnpm run typecheck      # Type check with TypeScript
 ```
+
+Format and lint are handled from the monorepo root.
+
+## Code Organization
+
+```text
+src/
+├── index.ts              # Public API exports
+├── constants.ts          # Constants for mouse handling
+├── context.ts            # React context for mouse state
+├── geometry.ts           # Geometry utilities (Point, Rect, etc.)
+├── provider.tsx          # MouseProvider component
+├── types.ts              # TypeScript type definitions
+├── hooks/                # React hooks
+│   ├── index.ts
+│   └── useMouse.ts       # Main useMouse hook
+├── utils/                # Utility functions
+│   └── index.ts
+└── integration/          # Integration utilities
+    └── index.ts
+```
+
+## Architecture
+
+### Provider Pattern
+
+The package uses React Context + Provider pattern to manage mouse state:
+
+1. **MouseProvider** - Wraps your Ink application and manages mouse tracking
+   - Initializes `xterm-mouse` for low-level protocol handling
+   - Maintains mouse state (position, buttons, etc.)
+   - Emits events to child components
+
+2. **useMouse hook** - Access mouse state and events in components
+   - Returns current mouse position, button states, and event handlers
+   - Automatically re-renders components on mouse events
+
+### Dependencies
+
+- **`ink`** ^6.6.0 - React for CLIs (peer dependency)
+- **`react`** ^19.2.3 - React (peer dependency)
+- **`xterm-mouse** (workspace:\*) - Low-level xterm mouse protocol handling
+
+### Additional Files
+
+- **TEST-GUIDE.md** - Comprehensive testing guide for mouse interactions
+- **CONTRIBUTING.md** - Contribution guidelines
+- **examples/** - Example usage patterns (not included in published package)
 
 ## Ink Component Development
 
@@ -76,12 +121,6 @@ This package specifically deals with mouse events in terminals:
 - Mouse support varies by terminal emulator
 - Always provide keyboard alternatives
 - Test across different terminals (iTerm, Terminal.app, Alacritty, etc.)
-
-## Dependencies
-
-- `ink` ^6.6.0 - React for CLIs (peer dependency)
-- `react` ^19.2.3 - React (peer dependency)
-- `xterm-mouse` - Low-level xterm mouse protocol handling
 
 ## Common Issues
 
