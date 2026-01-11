@@ -63,6 +63,22 @@ pnpm run check
 pnpm run lint:markdown
 ```
 
+### Verification
+
+```bash
+# Verify all vitest configs are consistent
+pnpm run verify:configs
+
+# Detect common Vitest issues
+pnpm run verify:tests
+```
+
+These scripts check for:
+
+- Consistent vitest configuration across packages
+- Common Vitest setup issues
+- Test file naming conventions
+
 ### Testing
 
 ```bash
@@ -170,22 +186,43 @@ Each package in `packages/` follows this structure:
 
 ```text
 packages/package-name/
-├── src/           # Source files
-├── dist/          # Build output (generated)
-├── tsup.config.ts # Build configuration
-├── tsconfig.json  # TypeScript configuration
-├── biome.json     # Linting configuration (optional)
-├── package.json   # Package metadata
-└── README.md      # Package documentation
+├── src/              # Source files
+├── dist/             # Build output (generated)
+├── examples/         # Example usage scripts (optional)
+├── test/             # Additional test files (optional)
+├── docs/             # Package documentation (optional)
+├── tsup.config.ts    # Build configuration
+├── tsconfig.json     # TypeScript configuration
+├── biome.json        # Linting configuration (optional)
+├── vitest.config.ts  # Vitest configuration (optional)
+├── package.json      # Package metadata
+├── README.md         # Package documentation
+├── CHANGELOG.md      # Changelog (generated)
+└── LICENSE           # License file
 ```
+
+### Current Packages
+
+The monorepo currently contains these packages:
+
+- **`@ink-tools/ink-mouse`** - Mouse support for Ink applications
+  - React components and hooks for mouse event handling
+  - Depends on `xterm-mouse` for low-level protocol handling
+  - Peer dependencies: `ink`, `react`
+
+- **`xterm-mouse`** - Low-level xterm mouse protocol library
+  - Event-based and streaming APIs for mouse events
+  - Supports both SGR and ESC mouse protocols
+  - Standalone library (no Ink dependency)
+  - Includes example scripts in `examples/` directory
 
 ### Package Build Configuration
 
 Packages use **tsup** for building with the following default settings:
 
 - Entry point: `src/index.ts`
-- Formats: ESM (`index.mjs`) and CJS (`index.js`)
-- TypeScript declarations: `index.d.ts`
+- Formats: ESM (`index.js`) and CJS (`index.cjs`)
+- TypeScript declarations: `index.d.ts` (ESM) and `index.d.cts` (CJS)
 - Target: `node18`
 - Bundled and minified output
 - Source maps included
@@ -404,20 +441,47 @@ Example package.json for an Ink package:
 {
   "name": "@ink-tools/ink-package",
   "version": "0.1.0",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "license": "MIT",
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
   },
   "peerDependencies": {
     "ink": "^6.6.0",
     "react": "^19.2.3"
-  }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
 }
 ```
