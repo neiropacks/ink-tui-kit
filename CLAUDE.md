@@ -4,293 +4,97 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **monorepo** for building Ink-based TUI (Terminal User Interface) components and
-utilities. It uses **pnpm** as the package manager, organized as a workspace with packages in the `packages/` directory.
+**Monorepo** for Ink-based TUI components using **pnpm workspaces**.
 
-**Ink** is a React-based library for building interactive command-line interfaces (CLIs) using
-React components. All packages in this monorepo are designed for terminal environments and
-should work with Ink applications.
+**Stack**: pnpm + Changesets + Vitest + tsup + Biome + dprint + markdownlint-cli2
 
-The monorepo uses:
-
-- **pnpm workspaces** for package management
-- **Changesets** for versioning and publishing
-- **Vitest** for testing
-- **tsup** for building packages
-- **Biome** for linting and formatting (TypeScript/JavaScript/JSON)
-- **dprint** for formatting YAML
-- **markdownlint-cli2** for linting and formatting Markdown
+**Ink** = React for CLIs. All packages work with Ink applications.
 
 ## Common Commands
 
-### Installation
-
 ```bash
+# Installation
 pnpm install
+
+# Building
+pnpm run build              # Build all packages
+pnpm run dev                # Watch mode
+
+# Code quality (runs via lefthook pre-commit)
+pnpm run typecheck          # TypeScript check
+pnpm run format             # Format all (Biome + dprint + markdownlint)
+pnpm run check              # Check without auto-fix
+
+# Testing
+pnpm test                   # Run all tests
+pnpm run test:coverage      # Coverage report (text)
+pnpm run test:coverage:lcov # LCOV for CI/CD
+
+# Verification
+pnpm run verify:configs     # Check vitest configs
+pnpm run verify:tests       # Detect vitest issues
 ```
-
-### Building
-
-```bash
-# Build all packages
-pnpm run build
-
-# Build specific package (from package directory)
-cd packages/ink-mouse && pnpm run build
-
-# Watch mode for development
-pnpm run dev
-```
-
-### Code Quality
-
-```bash
-# Type checking (runs in pre-commit)
-pnpm run typecheck
-
-# Format all code (runs via lefthook pre-commit)
-pnpm run format
-
-# Format individual file types
-pnpm run format:biome    # TypeScript/JavaScript/JSON
-pnpm run format:dprint   # YAML
-pnpm run format:markdown # Markdown
-
-# Check code without auto-fixing
-pnpm run check
-
-# Lint Markdown without auto-fixing
-pnpm run lint:markdown
-```
-
-### Verification
-
-```bash
-# Verify all vitest configs are consistent
-pnpm run verify:configs
-
-# Detect common Vitest issues
-pnpm run verify:tests
-```
-
-These scripts check for:
-
-- Consistent vitest configuration across packages
-- Common Vitest setup issues
-- Test file naming conventions
-
-### Testing
-
-```bash
-# Run all tests across all packages
-pnpm test
-
-# Run tests with coverage report (text output to console)
-pnpm run test:coverage
-
-# Generate LCOV coverage reports for CI/CD
-pnpm run test:coverage:lcov
-
-# Generate both text and LCOV reports
-pnpm run test:coverage:reporters
-```
-
-#### Coverage Configuration
-
-Coverage is configured in `vitest.config.ts` at the repository root:
-
-- **Threshold**: 80% for lines and functions (configurable)
-- **Output**: Text reports by default, LCOV on demand
-- **Location**: `coverage/` directory in each package (gitignored)
-- **Excludes**: Test files, mocks, fixtures, build artifacts, type definitions
-
-#### Coverage Goals
-
-- **Target**: >80% overall coverage
-- **Critical paths**: >90% coverage for business logic
-- **Utilities**: 100% coverage (pure functions)
-- **UI components**: Lower coverage acceptable (integration tests)
-
-#### Viewing Coverage Reports
-
-**Text output** (default):
-
-```bash
-pnpm test:coverage
-# Shows coverage table in terminal
-```
-
-**LCOV reports** (for CI/CD):
-
-```bash
-pnpm test:coverage:lcov
-# Generates coverage/lcov.info in each package
-# Can be uploaded to Codecov, Coveralls, etc.
-```
-
-**HTML reports** (future enhancement):
-
-```bash
-# TODO: Add HTML reporter for visual coverage inspection
-# Requires: monocart-coverage-reports or similar tool
-```
-
-#### Package-Level Testing
-
-For package-specific testing, run commands from the package directory:
-
-```bash
-cd packages/ink-mouse
-
-# Run tests for this package only
-pnpm test
-
-# Run with coverage
-pnpm test --coverage
-
-# Run specific test file
-pnpm test src/utils/geometry.test.ts
-```
-
-#### Coverage in CI/CD
-
-Coverage reports integrate with CI/CD services:
-
-- **GitHub Actions**: Upload `lcov.info` to Codecov
-- **GitLab CI**: Built-in coverage parsing
-- **Pull requests**: Automatic coverage comments (with Codecov setup)
-
-Example GitHub Actions workflow:
-
-```yaml
-- name: Run tests with coverage
-  run: pnpm run test:coverage:lcov
-
-- name: Upload to Codecov
-  uses: codecov/codecov-action@v3
-  with:
-    files: ./coverage/lcov.info
-```
-
-### Publishing
-
-The project uses Changesets for versioning:
-
-1. Run `pnpm changeset` to create a changeset for your changes
-2. When pushing to main, the GitHub workflow creates a release PR
-3. Merging the release PR publishes packages to npm
 
 ## Package Structure
-
-Each package in `packages/` follows this structure:
 
 ```text
 packages/package-name/
 ├── src/              # Source files
 ├── dist/             # Build output (generated)
-├── examples/         # Example usage scripts (optional)
-├── test/             # Additional test files (optional)
-├── docs/             # Package documentation (optional)
-├── tsup.config.ts    # Build configuration
-├── tsconfig.json     # TypeScript configuration
-├── biome.json        # Linting configuration (optional)
-├── vitest.config.ts  # Vitest configuration (optional)
+├── examples/         # Example scripts (optional)
+├── test/             # Additional tests (optional)
+├── docs/             # Package docs (optional)
+├── tsup.config.ts    # Build config
+├── tsconfig.json     # TypeScript config
+├── biome.json        # Linting config (optional)
+├── vitest.config.ts  # Vitest config (optional)
 ├── package.json      # Package metadata
-├── README.md         # Package documentation
+├── README.md         # Documentation
 ├── CHANGELOG.md      # Changelog (generated)
 └── LICENSE           # License file
 ```
 
 ### Current Packages
 
-The monorepo currently contains these packages:
-
-- **`@ink-tools/ink-mouse`** - Mouse support for Ink applications
-  - React components and hooks for mouse event handling
-  - Depends on `xterm-mouse` for low-level protocol handling
-  - Peer dependencies: `ink`, `react`
+- **`@ink-tools/ink-mouse`** - Mouse support for Ink apps
+  - React components/hooks for mouse events
+  - Depends on `xterm-mouse` for low-level protocol
+  - Peer deps: `ink`, `react`
 
 - **`xterm-mouse`** - Low-level xterm mouse protocol library
-  - Event-based and streaming APIs for mouse events
-  - Supports both SGR and ESC mouse protocols
-  - Standalone library (no Ink dependency)
-  - Includes example scripts in `examples/` directory
+  - Event-based and streaming APIs
+  - Supports SGR and ESC protocols
+  - Standalone (no Ink dependency)
+  - Includes examples in `examples/`
 
 ### Package Build Configuration
 
-Packages use **tsup** for building with the following default settings:
-
-- Entry point: `src/index.ts`
-- Formats: ESM (`index.js`) and CJS (`index.cjs`)
-- TypeScript declarations: `index.d.ts` (ESM) and `index.d.cts` (CJS)
-- Target: `node18`
-- Bundled and minified output
-- Source maps included
+Packages use **tsup**: ESM (`index.js`) + CJS (`index.cjs`) with types, node18 target, bundled & minified.
 
 ## Code Style
 
-- **TypeScript/JavaScript**: Formatted with Biome
-  - 120 character line width
-  - Single quotes
-  - Semicolons required
-  - 2-space indentation for TS/JS files
-  - Trailing commas
-
-- **YAML**: Formatted with dprint
-  - 2-space indentation
-  - Double quotes preferred
-
-- **Markdown**: Linted and formatted with markdownlint-cli2
-  - 120 character line width (warning)
-  - Proper spacing around headings and lists
-  - Fenced code blocks should have language specified
-
-- **EditorConfig**: Root configuration defines:
-  - UTF-8 encoding
-  - LF line endings
-  - 4-space indentation (except TS/JS: 2-space)
-  - 120 character line length limit
+- **TS/JS** (Biome): 120 char width, single quotes, semicolons, 2-space indent
+- **YAML** (dprint): 2-space indent, double quotes
+- **Markdown** (markdownlint-cli2): 120 char width, proper spacing, code blocks need language
+- **EditorConfig**: UTF-8, LF, 4-space indent (TS/JS: 2-space), 120 char limit
 
 ## Linting Rules
 
-Biome enforces strict rules including:
+Biome enforces: React best practices (hooks, JSX keys), security (no dangerouslySetInnerHTML), code style (type aliases, no var), no import cycles, explicit types, no await in loops (warn).
 
-- React best practices (hooks, JSX keys, no nested components)
-  - These apply to Ink components as well (Ink uses React)
-- Security (no dangerouslySetInnerHTML, no secrets)
-- Code style (type aliases, consistent array types, no var)
-- No import cycles
-- Explicit types required
-- Performance: no await in loops (warn)
-
-Note: `dangerouslySetInnerXML` is used in Ink for rendering ANSI escapes, which is safe in
-terminal environments.
+Note: `dangerouslySetInnerXML` is safe in Ink for ANSI escapes.
 
 ## Git Hooks
 
-Lefthook runs on pre-commit:
-
-1. **Biome**: Auto-formats staged TypeScript/JavaScript/JSON files
-2. **dprint**: Auto-formats staged YAML files
-3. **markdownlint**: Auto-formats staged Markdown files
-4. **Type check**: Runs TypeScript compiler check across all packages
+Lefthook pre-commit: Biome → dprint → markdownlint → typecheck
 
 ## TypeScript Configuration
 
-Root `tsconfig.json` settings:
-
-- Target: ES2022
-- Module resolution: bundler
-- Strict mode enabled
-- `noUncheckedIndexedAccess`: true
-- `noImplicitOverride`: true
-- JSX: react-jsx (for Ink components)
+Target: ES2022, module resolution: bundler, strict mode, `noUncheckedIndexedAccess`, `noImplicitOverride`, JSX: react-jsx
 
 ## Testing
 
-Use **Vitest** for running tests. Test files should use `.test.ts` or `.spec.ts` extensions.
-
-Example test structure:
+Use **Vitest**. Test files: `.test.ts` or `.spec.ts`.
 
 ```ts
 import { test, expect } from "vitest";
@@ -300,188 +104,56 @@ test("description", () => {
 });
 ```
 
-### Important Testing Notes
+### Important Notes
 
-- **Test files with JSX must use `.tsx` extension** - Rename from `.test.ts` to `.test.tsx` if using JSX
-- **Ink requires `<Text>` component** - All text strings in Ink components must be wrapped in `<Text>` from 'ink'
-- **Template literals in JSX** - Use variables for template literals, then interpolate in JSX:
+- **JSX tests** must use `.tsx` extension
+- **Ink** requires `<Text>` wrapper for strings
+- **Template literals in JSX**: use variables, then interpolate
 
-  ```tsx
-  const text = `Value: ${value}`;
-  return <Box><Text>{text}</Text></Box>;
-  ```
+### Coverage
+
+Configured in root `vitest.config.ts`: 80% threshold, text reports default, LCOV on demand, excludes tests/mocks/fixtures/dist.
 
 ## Documentation
 
-When creating or modifying documentation, follow these path conventions:
+**ALWAYS use relative paths** - never absolute paths like `/Users/...`.
 
-### Path Best Practices
+Repository-relative: `packages/ink-mouse/src/file.ts`
+File-relative: `[Topic](./topic.md)`
 
-**ALWAYS use relative paths instead of absolute paths:**
-
-- ✅ **Use repository-relative paths** for project files:
-
-  ```markdown
-  See `packages/ink-mouse/src/geometry.test.ts` for examples
-  ```
-
-- ✅ **Use file-relative paths** for documentation links:
-
-  ```markdown
-  - [Related Topic](./related-topic.md)
-  - [Parent Section](../README.md)
-  ```
-
-- ❌ **NEVER use absolute paths** - they break when cloned by other developers:
-
-  ```markdown
-  # WRONG - Don't do this!
-  - /Users/username/projects/repo/packages/...
-  ```
-
-### Why Relative Paths Matter
-
-Absolute paths contain machine-specific information (username, directory structure) that:
-
-- Break when repository is cloned by other developers
-- Differ between CI/CD environments
-- Cause broken links and confusion
-- Make documentation non-portable
-
-### Verification
-
-Before committing documentation changes, verify no absolute paths exist:
-
-```bash
-# Check for absolute paths in documentation
-grep -r "/Users/" docs/
-grep -r "/home/" docs/
-```
+Verify: `grep -r "/Users/" docs/` (should find nothing)
 
 ## Working with Ink
 
-All packages in this monorepo are designed to work with **Ink** - React for CLIs.
-
-### Key Ink Concepts
-
-- **Components**: Ink uses React components to render terminal output
-- **Hooks**: Standard React hooks (useState, useEffect, etc.) work in Ink
-- **Props**: Components receive props like standard React components
-- **stdin/stdout**: Ink handles terminal input/output automatically
-
-### Example Ink Component
+All packages use **Ink** (React for CLIs).
 
 ```tsx
 import type { FC } from 'react';
 import { Box, Text } from 'ink';
 
-const Example: FC<{ name: string }> = ({ name }) => {
-  return (
-    <Box borderStyle="double" padding={1}>
-      <Text color="green">Hello, {name}!</Text>
-    </Box>
-  );
-};
-
-export default Example;
+const Example: FC<{ name: string }> = ({ name }) => (
+  <Box borderStyle="double" padding={1}>
+    <Text color="green">Hello, {name}!</Text>
+  </Box>
+);
 ```
 
-### Running Ink Applications
+**Key concepts**: Components, hooks, props, stdin/stdout handled by Ink.
 
-```bash
-# Run an Ink application
-pnpm run src/index.tsx
+**Testing**: Test logic separate from rendering, use Vitest, mock stdin/stdout for interactive components.
 
-# For development with hot reload (if configured)
-pnpm run dev
-```
-
-### Testing Ink Components
-
-When testing Ink components, consider:
-
-- Testing component logic separate from rendering
-- Using Vitest for unit tests
-- Mocking stdin/stdout for interactive components
-
-### Package Dependencies
-
-Most packages will have:
-
-- `ink` (peer dependency) - ^6.6.0 or later
-- `react` (peer dependency) - ^19.2.3 or later
-- `react-reconciler` - may be needed for advanced features
-- `ansi-escapes` - for terminal control sequences
-- `terminal-size` - for responsive layouts
-
-## Package Manager and Runtime
-
-Use **pnpm** as the package manager:
-
-- Use `pnpm install` instead of `npm install` or `yarn install`
-- Use `pnpm test` to run tests (Vitest)
-- Use `pnpm run <script>` to execute npm scripts
-- For examples with watch mode, use `tsx watch <file>`
+**Typical peer deps**: `ink` ^6.6.0, `react` ^19.2.3
 
 ## Adding a New Package
 
-When creating a new Ink-related package in the monorepo:
+1. Create `packages/new-package/`
+2. `pnpm init` or manual package.json
+3. Add tsup.config.ts and build scripts
+4. Configure exports (ESM + CJS)
+5. Add peer deps: `ink`, `react`
+6. Add TypeScript config
+7. Add README.md with examples
 
-1. Create directory in `packages/new-package/`
-2. Initialize with `pnpm init` (or manually create package.json)
-3. Add build scripts and tsup.config.ts
-4. Configure package exports (ESM and CJS)
-5. Add peer dependencies: `ink` and `react`
-6. Add TypeScript types and configuration
-7. Include example usage in README.md
+**Key package.json fields**: `type: "module"`, `main: "./dist/index.cjs"`, `module: "./dist/index.js"`, `exports` with conditional imports, `publishConfig.access: "public"`, `engines.node: ">=20"`, `files: ["dist", "README.md", "LICENSE", "CHANGELOG.md"]`
 
-Example package.json for an Ink package:
-
-```json
-{
-  "name": "@ink-tools/ink-package",
-  "version": "0.1.0",
-  "license": "MIT",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    }
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "prepublishOnly": "pnpm run build",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage"
-  },
-  "peerDependencies": {
-    "ink": "^6.6.0",
-    "react": "^19.2.3"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ]
-}
-```
+**Scripts**: `build: tsup`, `dev: tsup --watch`, `test: vitest run`, `test:watch: vitest watch`, `test:coverage: vitest run --coverage`
