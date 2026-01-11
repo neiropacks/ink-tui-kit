@@ -1,45 +1,88 @@
 import { EventEmitter } from 'node:events';
-import type { ListenerFor, MouseEvent, MouseEventAction, MouseOptions, ReadableStreamWithEncoding } from '../types';
-import { EventStreamFactory } from './EventStreamFactory';
-import { MouseConvenienceMethods } from './MouseConvenienceMethods';
-import { MouseEventManager } from './MouseEventManager';
-import { TTYController } from './TTYController';
+import { parseMouseEvents } from '../parser/ansiParser';
+import { ANSI_CODES } from '../parser/constants';
+import {
+  type ListenerFor,
+  MouseError,
+  type MouseEvent,
+  type MouseEventAction,
+  type MouseOptions,
+  type ReadableStreamWithEncoding,
+} from '../types';
+
+/**
+ * FinalizationRegistry for automatic cleanup of Mouse instances.
+ *
+ * When a Mouse instance is garbage collected without explicit cleanup,
+ * this registry ensures that:
+ * - The stdin 'data' event listener is removed
+ * - The input stream state is restored (raw mode disabled, stream paused)
+ * - ANSI disable codes are sent to the terminal
+ *
+ * This prevents memory leaks from accumulated event listeners when Mouse instances
+ * are not properly destroyed.
+ */
+const mouseCleanupRegistry: FinalizationRegistry<{
+  inputStream: ReadableStreamWithEncoding;
+  handleEvent: (data: Buffer) => void;
+  outputStream: NodeJS.WriteStream;
+  previousRawMode: boolean | null;
+  isRaw: boolean | null;
+}> = new FinalizationRegistry(
+  (heldValue: {
+    inputStream: ReadableStreamWithEncoding;
+    handleEvent: (data: Buffer) => void;
+    outputStream: NodeJS.WriteStream;
+    previousRawMode: boolean | null;
+    isRaw: boolean | null;
+  }) => {
+    try {
+      heldValue.inputStream.off('data', heldValue.handleEvent);
+    } catch {
+      // Ignore errors during GC cleanup
+    }
+
+    try {
+      if (heldValue.isRaw) {
+        heldValue.inputStream.setRawMode(false);
+      }
+      heldValue.inputStream.pause();
+    } catch {
+      // Ignore errors during GC cleanup
+    }
+
+    try {
+      heldValue.outputStream.write(
+        ANSI_CODES.mouseSGR.off + ANSI_CODES.mouseMotion.off + ANSI_CODES.mouseDrag.off + ANSI_CODES.mouseButton.off,
+      );
+    } catch {
+      // Ignore errors during GC cleanup
+    }
+  },
+);
 
 /**
  * Represents and manages mouse events in a TTY environment.
- *
- * This class is a **facade** that composes smaller, focused components:
- * - **TTYController**: Manages terminal state and stream I/O
- * - **MouseEventManager**: Handles event emission and detection
- * - **EventStreamFactory**: Creates async generator streams
- * - **MouseConvenienceMethods**: Provides promise-based convenience methods
+ * It captures mouse events by controlling the input stream and parsing ANSI escape codes.
  *
  * **Automatic Cleanup:**
  * Mouse instances automatically register for cleanup when `enable()` is called.
  * If a Mouse instance is garbage collected without explicit cleanup via `disable()` or `destroy()`,
- * the TTYController ensures that stdin event listeners are removed to prevent memory leaks.
+ * the FinalizationRegistry ensures that stdin event listeners are removed to prevent memory leaks.
  *
  * **Recommended Cleanup:**
  * Despite automatic cleanup, it's still recommended to explicitly call `destroy()` when done
  * with a Mouse instance for immediate and predictable resource release.
  */
 class Mouse {
-  private readonly tty: TTYController;
-  private readonly eventManager: MouseEventManager;
-  private readonly streamFactory: EventStreamFactory;
-  private readonly convenience: MouseConvenienceMethods;
-
-  /**
-   * Result type for terminal capability checks.
-   */
-  static readonly SupportCheckResult = {
-    /** Mouse events are supported */
-    Supported: 'supported',
-    /** Input stream is not a TTY */
-    NotTTY: 'not_tty',
-    /** Output stream is not a TTY */
-    OutputNotTTY: 'output_not_tty',
-  } as const;
+  private enabled = false;
+  private paused = false;
+  private previousEncoding: BufferEncoding | null = null;
+  private previousRawMode: boolean | null = null;
+  private lastPress: MouseEvent | null = null;
+  private lastPosition: { x: number; y: number } | null = null;
+  private clickDistanceThreshold: number;
+  private cleanupToken: { instance: Mouse } | null = null;
 
   /**
    * Constructs a new Mouse instance.
@@ -68,25 +111,25 @@ class Mouse {
    * ```
    */
   constructor(
-    inputStream: ReadableStreamWithEncoding = process.stdin,
-    outputStream: NodeJS.WriteStream = process.stdout,
-    emitter: EventEmitter = new EventEmitter(),
-    options?: MouseOptions,
+    private inputStream: ReadableStreamWithEncoding = process.stdin,
+    private outputStream: NodeJS.WriteStream = process.stdout,
+    private emitter: EventEmitter = new EventEmitter(),
+    private options?: MouseOptions,
   ) {
-    // Create event manager first (needed by TTYController for handleEvent)
-    this.eventManager = new MouseEventManager(emitter, options);
-
-    // Create TTY controller with event handler
-    this.tty = new TTYController(inputStream, outputStream, (data: Buffer) =>
-      this.eventManager.handleEvent(data, this.tty.isPaused()),
-    );
-
-    // Create stream factory and convenience methods
-    this.streamFactory = new EventStreamFactory(this.eventManager.getEmitter());
-    this.convenience = new MouseConvenienceMethods(this.eventManager.getEmitter(), () =>
-      this.eventManager.getLastPosition(),
-    );
+    this.clickDistanceThreshold = this.options?.clickDistanceThreshold ?? 1;
   }
+
+  /**
+   * Result type for terminal capability checks.
+   */
+  static readonly SupportCheckResult = {
+    /** Mouse events are supported */
+    Supported: 'supported',
+    /** Input stream is not a TTY */
+    NotTTY: 'not_tty',
+    /** Output stream is not a TTY */
+    OutputNotTTY: 'output_not_tty',
+  } as const;
 
   /**
    * Checks if the current terminal environment supports mouse events.
@@ -162,6 +205,40 @@ class Mouse {
     return Mouse.SupportCheckResult.Supported;
   }
 
+  private handleEvent = (data: Buffer): void => {
+    if (this.paused) {
+      return;
+    }
+
+    try {
+      const events = parseMouseEvents(data.toString());
+      for (const event of events) {
+        this.emitter.emit(event.action, event);
+
+        if (event.action === 'press') {
+          this.lastPress = event;
+        } else if (event.action === 'release') {
+          if (this.lastPress) {
+            const xDiff = Math.abs(event.x - this.lastPress.x);
+            const yDiff = Math.abs(event.y - this.lastPress.y);
+
+            if (xDiff <= this.clickDistanceThreshold && yDiff <= this.clickDistanceThreshold) {
+              const clickEvent: MouseEvent = { ...event, action: 'click' };
+              process.nextTick(() => {
+                this.emitter.emit('click', clickEvent);
+              });
+            }
+          }
+          this.lastPress = null;
+        } else if (event.action === 'move' || event.action === 'drag') {
+          this.lastPosition = { x: event.x, y: event.y };
+        }
+      }
+    } catch (err) {
+      this.emitter.emit('error', err);
+    }
+  };
+
   /**
    * Enables mouse event tracking.
    *
@@ -212,7 +289,48 @@ class Mouse {
    * ```
    */
   public enable = (): void => {
-    this.tty.enable();
+    if (this.enabled) {
+      return;
+    }
+
+    if (!this.inputStream.isTTY) {
+      throw new Error('Mouse events require a TTY input stream');
+    }
+
+    try {
+      this.previousRawMode = this.inputStream.isRaw ?? false;
+      this.previousEncoding = this.inputStream.readableEncoding || null;
+
+      this.enabled = true;
+
+      this.outputStream.write(
+        ANSI_CODES.mouseButton.on + ANSI_CODES.mouseDrag.on + ANSI_CODES.mouseMotion.on + ANSI_CODES.mouseSGR.on,
+      );
+
+      this.inputStream.setRawMode(true);
+      this.inputStream.setEncoding('utf8');
+      this.inputStream.resume();
+      this.inputStream.on('data', this.handleEvent);
+
+      this.cleanupToken = { instance: this };
+      mouseCleanupRegistry.register(
+        this,
+        {
+          inputStream: this.inputStream,
+          handleEvent: this.handleEvent,
+          outputStream: this.outputStream,
+          previousRawMode: this.previousRawMode,
+          isRaw: this.inputStream.isRaw ?? false,
+        },
+        this.cleanupToken,
+      );
+    } catch (err) {
+      this.enabled = false;
+      throw new MouseError(
+        `Failed to enable mouse: ${err instanceof Error ? err.message : String(err)}`,
+        err instanceof Error ? err : undefined,
+      );
+    }
   };
 
   /**
@@ -221,7 +339,41 @@ class Mouse {
    * @see {@link enable} to enable tracking and capture mouse events
    */
   public disable = (): void => {
-    this.tty.disable();
+    if (!this.enabled) {
+      return;
+    }
+
+    try {
+      // Unregister from FinalizationRegistry before cleanup
+      if (this.cleanupToken) {
+        mouseCleanupRegistry.unregister(this.cleanupToken);
+        this.cleanupToken = null;
+      }
+
+      this.inputStream.off('data', this.handleEvent);
+      this.inputStream.pause();
+
+      if (this.previousRawMode !== null) {
+        this.inputStream.setRawMode(this.previousRawMode);
+      }
+
+      if (this.previousEncoding !== null) {
+        this.inputStream.setEncoding(this.previousEncoding);
+      }
+
+      this.outputStream.write(
+        ANSI_CODES.mouseSGR.off + ANSI_CODES.mouseMotion.off + ANSI_CODES.mouseDrag.off + ANSI_CODES.mouseButton.off,
+      );
+    } catch (err) {
+      throw new MouseError(
+        `Failed to disable mouse: ${err instanceof Error ? err.message : String(err)}`,
+        err instanceof Error ? err : undefined,
+      );
+    } finally {
+      this.enabled = false;
+      this.previousRawMode = null;
+      this.previousEncoding = null;
+    }
   };
 
   /**
@@ -276,7 +428,11 @@ class Mouse {
    * ```
    */
   public pause = (): void => {
-    this.tty.pause();
+    if (this.paused) {
+      return;
+    }
+
+    this.paused = true;
   };
 
   /**
@@ -330,7 +486,11 @@ class Mouse {
    * ```
    */
   public resume = (): void => {
-    this.tty.resume();
+    if (!this.paused) {
+      return;
+    }
+
+    this.paused = false;
   };
 
   /**
@@ -368,7 +528,7 @@ class Mouse {
     event: T,
     listener: T extends 'error' ? (error: Error) => void : ListenerFor<T>,
   ): EventEmitter => {
-    return this.eventManager.on(event, listener);
+    return this.emitter.on(event, listener as Parameters<typeof this.emitter.on>[1]);
   };
 
   /**
@@ -397,7 +557,7 @@ class Mouse {
     event: T,
     listener: T extends 'error' ? (error: Error) => void : ListenerFor<T>,
   ): EventEmitter => {
-    return this.eventManager.off(event, listener);
+    return this.emitter.off(event, listener as Parameters<typeof this.emitter.off>[1]);
   };
 
   /**
@@ -456,7 +616,11 @@ class Mouse {
     event: T,
     listener: T extends 'error' ? (error: Error) => void : ListenerFor<T>,
   ): EventEmitter => {
-    return this.eventManager.once(event, listener);
+    const wrappedListener = (...args: unknown[]): void => {
+      this.emitter.off(event, wrappedListener);
+      (listener as (...args: unknown[]) => void)(...args);
+    };
+    return this.emitter.on(event, wrappedListener as Parameters<typeof this.emitter.on>[1]);
   };
 
   /**
@@ -565,9 +729,95 @@ class Mouse {
    */
   public async *eventsOf(
     type: MouseEventAction,
-    options?: { latestOnly?: boolean; maxQueue?: number; signal?: AbortSignal },
+    {
+      latestOnly = false,
+      maxQueue = 100,
+      signal,
+    }: { latestOnly?: boolean; maxQueue?: number; signal?: AbortSignal } = {},
   ): AsyncGenerator<MouseEvent> {
-    yield* this.streamFactory.eventsOf(type, options);
+    if (signal?.aborted) {
+      throw new Error('The operation was aborted.');
+    }
+
+    const queue: MouseEvent[] = [];
+    const errorQueue: Error[] = [];
+    const finalMaxQueue = Math.min(maxQueue, 1000);
+    let latest: MouseEvent | null = null;
+    let resolveNext: ((value: MouseEvent) => void) | null = null;
+    let rejectNext: ((err: Error) => void) | null = null;
+
+    const handler = (ev: MouseEvent): void => {
+      if (resolveNext) {
+        resolveNext(ev);
+        resolveNext = null;
+        rejectNext = null;
+        latest = null;
+      } else if (latestOnly) {
+        latest = ev;
+      } else {
+        if (queue.length >= finalMaxQueue) queue.shift();
+        queue.push(ev);
+      }
+    };
+
+    const errorHandler = (err: Error): void => {
+      const mouseError = new MouseError(`Error in mouse event stream: ${err.message}`, err);
+      if (rejectNext) {
+        rejectNext(mouseError);
+        resolveNext = null;
+        rejectNext = null;
+      } else {
+        errorQueue.push(mouseError);
+      }
+    };
+
+    const abortHandler = (): void => {
+      const err = new MouseError('The operation was aborted.');
+      if (rejectNext) {
+        rejectNext(err);
+        resolveNext = null;
+        rejectNext = null;
+      } else {
+        errorQueue.push(err);
+      }
+    };
+
+    this.emitter.on(type, handler);
+    this.emitter.on('error', errorHandler);
+    signal?.addEventListener('abort', abortHandler);
+
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          throw new MouseError('The operation was aborted.');
+        }
+
+        if (errorQueue.length > 0) {
+          throw errorQueue.shift();
+        }
+
+        if (queue.length > 0) {
+          const event = queue.shift();
+          if (event) {
+            yield event;
+          }
+        } else if (latest !== null) {
+          const ev = latest;
+          latest = null;
+          yield ev;
+        } else {
+          // biome-ignore lint/performance/noAwaitInLoops: This is an async generator, await in loop is necessary
+          yield await new Promise<MouseEvent>((resolve, reject) => {
+            resolveNext = resolve;
+            rejectNext = reject;
+          });
+        }
+      }
+    } finally {
+      this.emitter.off(type, handler);
+      this.emitter.off('error', errorHandler);
+      signal?.removeEventListener('abort', abortHandler);
+    }
   }
 
   /**
@@ -656,8 +906,97 @@ class Mouse {
    * }
    * ```
    */
-  public async *debouncedMoveEvents(options?: { interval?: number; signal?: AbortSignal }): AsyncGenerator<MouseEvent> {
-    yield* this.streamFactory.debouncedMoveEvents(options);
+  public async *debouncedMoveEvents({
+    interval = 16,
+    signal,
+  }: {
+    interval?: number;
+    signal?: AbortSignal;
+  } = {}): AsyncGenerator<MouseEvent> {
+    if (signal?.aborted) {
+      throw new MouseError('The operation was aborted.');
+    }
+
+    let latestEvent: MouseEvent | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let resolveNext: ((value: MouseEvent) => void) | null = null;
+    let rejectNext: ((err: Error) => void) | null = null;
+    const errorQueue: Error[] = [];
+
+    const scheduleEvent = (ev: MouseEvent): void => {
+      latestEvent = ev;
+
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+
+      timeoutId = setTimeout(() => {
+        if (latestEvent !== null && resolveNext !== null) {
+          const eventToYield = latestEvent;
+          latestEvent = null;
+          resolveNext(eventToYield);
+          resolveNext = null;
+          rejectNext = null;
+        }
+      }, interval);
+    };
+
+    const errorHandler = (err: Error): void => {
+      const mouseError = new MouseError(`Error in mouse event stream: ${err.message}`, err);
+      if (rejectNext) {
+        rejectNext(mouseError);
+        resolveNext = null;
+        rejectNext = null;
+      } else {
+        errorQueue.push(mouseError);
+      }
+    };
+
+    const abortHandler = (): void => {
+      const err = new MouseError('The operation was aborted.');
+      if (rejectNext) {
+        rejectNext(err);
+        resolveNext = null;
+        rejectNext = null;
+      } else {
+        errorQueue.push(err);
+      }
+    };
+
+    this.emitter.on('move', scheduleEvent);
+    this.emitter.on('error', errorHandler);
+    signal?.addEventListener('abort', abortHandler);
+
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          throw new MouseError('The operation was aborted.');
+        }
+
+        if (errorQueue.length > 0) {
+          throw errorQueue.shift();
+        }
+
+        if (latestEvent !== null && timeoutId === null) {
+          const ev = latestEvent;
+          latestEvent = null;
+          yield ev;
+        } else {
+          // biome-ignore lint/performance/noAwaitInLoops: This is an async generator, await in loop is necessary
+          yield await new Promise<MouseEvent>((resolve, reject) => {
+            resolveNext = resolve;
+            rejectNext = reject;
+          });
+        }
+      }
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+      this.emitter.off('move', scheduleEvent);
+      this.emitter.off('error', errorHandler);
+      signal?.removeEventListener('abort', abortHandler);
+    }
   }
 
   /**
@@ -669,12 +1008,110 @@ class Mouse {
    * @param options.signal An AbortSignal to cancel the async generator.
    * @yields {{ type: MouseEventAction; event: MouseEvent }} An object with the event type and data.
    */
-  public async *stream(options?: {
+  public async *stream({
+    latestOnly = false,
+    maxQueue = 1000,
+    signal,
+  }: {
     latestOnly?: boolean;
     maxQueue?: number;
     signal?: AbortSignal;
-  }): AsyncGenerator<{ type: MouseEventAction; event: MouseEvent }> {
-    yield* this.streamFactory.stream(options);
+  } = {}): AsyncGenerator<{ type: MouseEventAction; event: MouseEvent }> {
+    if (signal?.aborted) {
+      throw new Error('The operation was aborted.');
+    }
+
+    const queue: { type: MouseEventAction; event: MouseEvent }[] = [];
+    const errorQueue: Error[] = [];
+    let latest: { type: MouseEventAction; event: MouseEvent } | null = null;
+    let resolveNext: ((value: { type: MouseEventAction; event: MouseEvent }) => void) | null = null;
+    let rejectNext: ((err: Error) => void) | null = null;
+
+    const handlers = new Map<MouseEventAction, (ev: MouseEvent) => void>();
+    const allEvents: MouseEventAction[] = ['press', 'release', 'drag', 'wheel', 'move', 'click'];
+
+    allEvents.forEach((type) => {
+      const handler = (ev: MouseEvent): void => {
+        const wrapped = { type, event: ev };
+
+        if (resolveNext) {
+          resolveNext(wrapped);
+          resolveNext = null;
+          rejectNext = null;
+          latest = null;
+        } else if (latestOnly) {
+          latest = wrapped;
+        } else {
+          if (queue.length >= maxQueue) queue.shift();
+          queue.push(wrapped);
+        }
+      };
+
+      handlers.set(type, handler);
+      this.emitter.on(type, handler);
+    });
+
+    const errorHandler = (err: Error): void => {
+      const mouseError = new MouseError(`Error in mouse event stream: ${err.message}`, err);
+      if (rejectNext) {
+        rejectNext(mouseError);
+        resolveNext = null;
+        rejectNext = null;
+      } else {
+        errorQueue.push(mouseError);
+      }
+    };
+    this.emitter.on('error', errorHandler);
+
+    const abortHandler = (): void => {
+      const err = new MouseError('The operation was aborted.');
+      if (rejectNext) {
+        rejectNext(err);
+        resolveNext = null;
+        rejectNext = null;
+      } else {
+        errorQueue.push(err);
+      }
+    };
+    signal?.addEventListener('abort', abortHandler);
+
+    try {
+      while (true) {
+        if (signal?.aborted) {
+          throw new MouseError('The operation was aborted.');
+        }
+
+        if (errorQueue.length > 0) {
+          throw errorQueue.shift();
+        }
+
+        if (queue.length > 0) {
+          const event = queue.shift();
+          if (event) {
+            yield event;
+          }
+        } else if (latest !== null) {
+          const ev = latest;
+          latest = null;
+          yield ev;
+        } else {
+          // biome-ignore lint/performance/noAwaitInLoops: This is an async generator, await in loop is necessary
+          yield await new Promise<{ type: MouseEventAction; event: MouseEvent }>((resolve, reject) => {
+            resolveNext = resolve;
+            rejectNext = reject;
+          });
+        }
+      }
+    } finally {
+      allEvents.forEach((type) => {
+        const handler = handlers.get(type);
+        if (handler) {
+          this.emitter.off(type, handler);
+        }
+      });
+      this.emitter.off('error', errorHandler);
+      signal?.removeEventListener('abort', abortHandler);
+    }
   }
 
   /**
@@ -682,7 +1119,7 @@ class Mouse {
    * @returns {boolean} True if enabled, false otherwise.
    */
   public isEnabled(): boolean {
-    return this.tty.isEnabled();
+    return this.enabled;
   }
 
   /**
@@ -763,7 +1200,7 @@ class Mouse {
    * ```
    */
   public isPaused(): boolean {
-    return this.tty.isPaused();
+    return this.paused;
   }
 
   /**
@@ -798,8 +1235,14 @@ class Mouse {
    * ```
    */
   public destroy(): void {
-    this.tty.destroy();
-    this.eventManager.removeAllListeners();
+    this.disable();
+
+    if (this.cleanupToken) {
+      mouseCleanupRegistry.unregister(this.cleanupToken);
+      this.cleanupToken = null;
+    }
+
+    this.emitter.removeAllListeners();
   }
 
   /**
@@ -856,8 +1299,42 @@ class Mouse {
    * }
    * ```
    */
-  public async waitForClick(options?: { timeout?: number; signal?: AbortSignal }): Promise<MouseEvent> {
-    return this.convenience.waitForClick(options);
+  public async waitForClick({
+    timeout = 30000,
+    signal,
+  }: {
+    timeout?: number;
+    signal?: AbortSignal;
+  } = {}): Promise<MouseEvent> {
+    if (signal?.aborted) {
+      throw new MouseError('The operation was aborted.');
+    }
+
+    return new Promise<MouseEvent>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new MouseError(`Timeout waiting for click after ${timeout}ms`));
+      }, timeout);
+
+      const abortHandler = (): void => {
+        cleanup();
+        reject(new MouseError('The operation was aborted.'));
+      };
+
+      const clickHandler = (event: MouseEvent): void => {
+        cleanup();
+        resolve(event);
+      };
+
+      const cleanup = (): void => {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener('abort', abortHandler);
+        this.emitter.off('click', clickHandler);
+      };
+
+      signal?.addEventListener('abort', abortHandler);
+      this.emitter.on('click', clickHandler);
+    });
   }
 
   /**
@@ -907,8 +1384,50 @@ class Mouse {
    * console.log('Continuing...');
    * ```
    */
-  public async waitForInput(options?: { timeout?: number; signal?: AbortSignal }): Promise<MouseEvent> {
-    return this.convenience.waitForInput(options);
+  public async waitForInput({
+    timeout = 30000,
+    signal,
+  }: {
+    timeout?: number;
+    signal?: AbortSignal;
+  } = {}): Promise<MouseEvent> {
+    if (signal?.aborted) {
+      throw new MouseError('The operation was aborted.');
+    }
+
+    return new Promise<MouseEvent>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new MouseError(`Timeout waiting for input after ${timeout}ms`));
+      }, timeout);
+
+      const abortHandler = (): void => {
+        cleanup();
+        reject(new MouseError('The operation was aborted.'));
+      };
+
+      const allEvents: MouseEventAction[] = ['press', 'release', 'drag', 'wheel', 'move', 'click'];
+
+      const inputHandler =
+        (_action: MouseEventAction) =>
+        (event: MouseEvent): void => {
+          cleanup();
+          resolve(event);
+        };
+
+      const cleanup = (): void => {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener('abort', abortHandler);
+        allEvents.forEach((action) => {
+          this.emitter.off(action, inputHandler(action));
+        });
+      };
+
+      signal?.addEventListener('abort', abortHandler);
+      allEvents.forEach((action) => {
+        this.emitter.on(action, inputHandler(action));
+      });
+    });
   }
 
   /**
@@ -960,7 +1479,7 @@ class Mouse {
    * ```
    */
   public getLastPosition(): { x: number; y: number } | null {
-    return this.eventManager.getLastPosition();
+    return this.lastPosition;
   }
 
   /**
@@ -1017,11 +1536,47 @@ class Mouse {
    * const { x, y } = await mouse.getMousePosition({ timeout: 5000 });
    * ```
    */
-  public async getMousePosition(options?: {
+  public async getMousePosition({
+    timeout = 30000,
+    signal,
+  }: {
     timeout?: number;
     signal?: AbortSignal;
-  }): Promise<{ x: number; y: number }> {
-    return this.convenience.getMousePosition(options);
+  } = {}): Promise<{ x: number; y: number }> {
+    if (signal?.aborted) {
+      throw new MouseError('The operation was aborted.');
+    }
+
+    // If we already have a cached position, return it immediately
+    if (this.lastPosition !== null) {
+      return this.lastPosition;
+    }
+
+    return new Promise<{ x: number; y: number }>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new MouseError(`Timeout waiting for mouse position after ${timeout}ms`));
+      }, timeout);
+
+      const abortHandler = (): void => {
+        cleanup();
+        reject(new MouseError('The operation was aborted.'));
+      };
+
+      const moveHandler = (event: MouseEvent): void => {
+        cleanup();
+        resolve({ x: event.x, y: event.y });
+      };
+
+      const cleanup = (): void => {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener('abort', abortHandler);
+        this.emitter.off('move', moveHandler);
+      };
+
+      signal?.addEventListener('abort', abortHandler);
+      this.emitter.on('move', moveHandler);
+    });
   }
 }
 
