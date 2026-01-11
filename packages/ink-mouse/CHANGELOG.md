@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.5
+
+### Patch Changes
+
+- 3a717ed: Fix publish workflow to resolve `workspace:*` dependencies to actual versions in published package.json
+
 ## 2.0.4
 
 ### Patch Changes
